@@ -63,7 +63,7 @@ class IsingSimulation:
         for i in range(n_timesteps):
             state = self.step(False, state)
             time_series[i] = state
-        print(np.sum(time_series))
+        # print(np.sum(time_series))
         fc = 1/n_timesteps * time_series.T @ time_series 
         return time_series, fc
     
