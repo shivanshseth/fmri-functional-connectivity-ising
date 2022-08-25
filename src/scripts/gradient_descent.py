@@ -49,6 +49,7 @@ def beta_optimization(data, beta):
     for idx, bold in enumerate(data):
         fc = 1/n_timesteps * data[idx].T @ data
         J_max = optimize.fmin_cg(loss, x0=J.flatten(), fprime=gradient, args=(bold, beta))
+        J_max = np.reshape(J_max, (n_rois, n_rois))
         sim = IsingSimulation(n_rois, beta, coupling_mat = True, J=J_max)
         for i in range(eq_steps):
             sim.step()
@@ -56,7 +57,7 @@ def beta_optimization(data, beta):
         corrs[i] = np.corrcoef(np.triu(fc).flatten(), np.triu(sim_fc).flatten())[0, 1]
     return np.mean(corrs), np.std(corrs)
 
-betas = np.linspace(0, 4, 50)
+betas = np.linspace(0, 1, 2)
 results = Parallel(n_jobs=20)(delayed(beta_optimization)(data, i) for i in betas)
 file = open('../results/beta_optimization.pkl', 'wb')
 pickle.dump(results, file)
