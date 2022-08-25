@@ -31,6 +31,33 @@ def gradient(J, s, beta):
     grad = grad * beta/n_timesteps
     return -grad.flatten()
 
+def gradient_descent(max_iterations,w_init,
+                     obj_func,grad_func,extra_param = (),
+                     learning_rate=0.05,momentum=0.8, threshold=0.001, disp=False):
+    
+    w = w_init
+    w_history = [w]
+    f_history = [obj_func(w,*extra_param)]
+    delta_w = np.zeros(w.shape)
+    i = 0
+    diff = 1.0e10
+    
+    while i<max_iterations and diff > threshold:
+        grad = grad_func(w,*extra_param)
+        # print("from func", grad.shape)
+        grad = np.reshape(grad, (n_rois, n_rois))
+        # print(grad.shape)
+        delta_w = -learning_rate*grad
+        w = w+delta_w
+        f_history.append(obj_func(w,*extra_param))
+        w_history.append(w)
+        if i%10 == 0 and disp: 
+            print(f"iteration: {i} loss: {f_history[-1]} grad: {np.sum(grad)}")
+        i+=1
+        diff = np.absolute(f_history[-1]-f_history[-2])
+    
+    return w_history,f_history
+
 dataset = Abide(sites='NYU')
 data, ids, diagnosis, age, sex = dataset.get_timeseries('AAL', 'AAL') 
 data_bin = data.copy()
@@ -40,7 +67,8 @@ n_timesteps = data.shape[1]
 n_rois = data.shape[2]
 eq_steps = 1000
 sim_timesteps = 300
-
+alpha = 1
+iterations = 500
 def beta_optimization(data, data_bin, beta):
     J = np.random.uniform(0, 1, size=(n_rois, n_rois))
     J = (J + J.T)/2 # making it symmetric
@@ -48,7 +76,9 @@ def beta_optimization(data, data_bin, beta):
     corrs = np.zeros(data.shape[0])
     for idx, bold in enumerate(data_bin):
         fc = 1/n_timesteps * data[idx].T @ data[idx]
-        J_max = optimize.fmin_cg(loss, x0=J.flatten(), fprime=gradient, args=(bold, beta))
+        # J_max = optimize.fmin_cg(loss, x0=J.flatten(), fprime=gradient, args=(bold, beta))
+        J_hist, f_hist = gradient_descent(iterations, J, loss, gradient, extra_param=(bold, beta) , learning_rate=alpha, threshold=0.01)
+        J_max = J_hist[f_hist.index(min(f_hist))]
         J_max = np.reshape(J_max, (n_rois, n_rois))
         sim = IsingSimulation(n_rois, beta, coupling_mat = True, J=J_max)
         for i in range(eq_steps):
@@ -58,7 +88,8 @@ def beta_optimization(data, data_bin, beta):
     return np.mean(corrs), np.std(corrs)
 
 betas = np.linspace(0, 2, 50)
-results = Parallel(n_jobs=20)(delayed(beta_optimization)(data, data_bin, i) for i in betas)
+# results = Parallel(n_jobs=20)(delayed(beta_optimization)(data, data_bin, i) for i in betas)
+results = beta_optimization(data, data_bin, 0.1)
 file = open('../results/beta_optimization.pkl', 'wb')
 pickle.dump(results, file)
 results = np.array(results)

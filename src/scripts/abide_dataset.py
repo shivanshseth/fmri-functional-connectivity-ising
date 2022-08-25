@@ -81,10 +81,29 @@ class Abide():
         self.n_samples = len(filtered_func_files)
         self.func = filtered_func_files
     
+    def __loss(self, J, s, beta):
+        J = np.reshape(J, (self.n_rois, self.n_rois))
+        term1 = 0
+        term2 = 0
+        for t in range(self.n_timesteps):
+            C = beta * J @ s[t].T
+            term1 += C @ s[t].T
+            term2 -= np.sum(np.log(np.exp(C) + np.exp(-C)))
+        return -(term1+term2)/self.n_timesteps
+
+    def __gradient(self, J, s, beta):
+        J = np.reshape(J, (self.n_rois, self.n_rois))
+        grad = np.zeros((self.n_rois, self.n_rois))
+        for t in range(self.n_timesteps):
+            C = beta * J @ s[t].T
+            grad += np.outer(s[t], s[t].T) - np.outer(np.tanh(C).T, s[t])
+        grad = grad * beta/self.n_timesteps
+        return -grad.flatten()
+
     def parcellate(self, scale, atlas_filename):
         res = []
         atlas = atlas_filename
-        os.mkdir(join(self.timeseries_dir, altas_filename))
+        os.mkdir(join(self.timeseries_dir, atlas_filename))
         masker = NiftiLabelsMasker(labels_img=atlas_filename,
                                     memory='nilearn_cache')
         print('getting parcellated time series...')
@@ -141,35 +160,27 @@ class Abide():
         return timeseries, IDs_subject, diagnosis, age, sex
     
     def sFC(self, scale, atlas):
-        data = self.get_timeseries(scale, atlas)
+        data, ID, diag, age, sex = self.get_timeseries(scale, atlas)
         correlation_measure = ConnectivityMeasure(kind='correlation', vectorize=True, discard_diagonal= True)
         correlation_matrices = correlation_measure.fit_transform(data)
-        return correlation_matrices
+        return correlation_matrices, ID, diag, age, sex
     
-    def __loss(self, J, s, beta):
-        J = np.reshape(J, (self.n_rois, self.n_rois))
-        term1 = 0
-        term2 = 0
-        for t in range(self.n_timesteps):
-            C = beta * J @ s[t].T
-            term1 += C @ s[t].T
-            term2 -= np.sum(np.log(np.exp(C) + np.exp(-C)))
-        return -(term1+term2)/self.n_timesteps
-
-    def __gradient(self, J, s, beta):
-        J = np.reshape(J, (self.n_rois, self.n_rois))
-        grad = np.zeros((self.n_rois, self.n_rois))
-        for t in range(n_timesteps):
-            C = beta * J @ s[t].T
-            grad += np.outer(s[t], s[t].T) - np.outer(np.tanh(C).T, s[t])
-        grad = grad * beta/self.n_timesteps
     
     def ising_coupling(self, scale, atlas):
-        data = self.get_timeseries(scale, atlas)
+        data, ID, diag, age, sex = self.get_timeseries(scale, atlas)
         data[np.where(data >= 0)] = 1
         data[np.where(data < 0)] = -1
+        J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
+        J = (J + J.T)/2 # making it symmetric
+        np.fill_diagonal(J, 0)
+        beta = 0.1
+        reps = []
         for i in data:
-            J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(bold_bin, beta))
+            J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(i, beta))
+            reps.append(J_max)
+        reps = np.array(J_max)
+        return reps, ID, diag, age, sex
+        
 
 if __name__ == '__main__':
     dataset = Abide(sites='NYU')
