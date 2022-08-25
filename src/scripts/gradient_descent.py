@@ -67,7 +67,7 @@ n_timesteps = data.shape[1]
 n_rois = data.shape[2]
 eq_steps = 1000
 sim_timesteps = 300
-alpha = 1
+alpha = 10
 iterations = 500
 def beta_optimization(data, data_bin, beta):
     J = np.random.uniform(0, 1, size=(n_rois, n_rois))
@@ -77,7 +77,7 @@ def beta_optimization(data, data_bin, beta):
     for idx, bold in enumerate(data_bin):
         fc = 1/n_timesteps * data[idx].T @ data[idx]
         # J_max = optimize.fmin_cg(loss, x0=J.flatten(), fprime=gradient, args=(bold, beta))
-        J_hist, f_hist = gradient_descent(iterations, J, loss, gradient, extra_param=(bold, beta) , learning_rate=alpha, threshold=0.01)
+        J_hist, f_hist = gradient_descent(iterations, J, loss, gradient, extra_param=(bold, beta) , learning_rate=alpha, threshold=0.005, disp=True)
         J_max = J_hist[f_hist.index(min(f_hist))]
         J_max = np.reshape(J_max, (n_rois, n_rois))
         sim = IsingSimulation(n_rois, beta, coupling_mat = True, J=J_max)
@@ -88,9 +88,9 @@ def beta_optimization(data, data_bin, beta):
     return np.mean(corrs), np.std(corrs)
 
 betas = np.linspace(0, 2, 50)
-# results = Parallel(n_jobs=20)(delayed(beta_optimization)(data, data_bin, i) for i in betas)
-results = beta_optimization(data, data_bin, 0.1)
-file = open('../results/beta_optimization.pkl', 'wb')
+results = Parallel(n_jobs=20)(delayed(beta_optimization)(data, data_bin, i) for i in betas)
+#results = beta_optimization(data, data_bin, 0.1)
+file = open('../results/beta_optimization_gd.pkl', 'wb')
 pickle.dump(results, file)
 results = np.array(results)
-np.savetxt('../results/beta_optimization', results)
+np.savetxt('../results/beta_optimization_gd.csv', results)
