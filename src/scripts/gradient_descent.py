@@ -58,3 +58,7 @@ def beta_optimization(data, beta):
 
 betas = np.linspace(0, 4, 50)
 results = Parallel(n_jobs=20)(delayed(beta_optimization)(data, i) for i in betas)
+file = open('../results/beta_optimization.pkl', 'wb')
+pickle.dump(results, file)
+results = np.array(results)
+np.savetxt('../results/beta_optimization', results)
