@@ -41,24 +41,24 @@ n_rois = data.shape[2]
 eq_steps = 1000
 sim_timesteps = 300
 
-def beta_optimization(data, beta):
+def beta_optimization(data, data_bin, beta):
     J = np.random.uniform(0, 1, size=(n_rois, n_rois))
     J = (J + J.T)/2 # making it symmetric
     np.fill_diagonal(J, 0)
     corrs = np.zeros(data.shape[0])
-    for idx, bold in enumerate(data):
-        fc = 1/n_timesteps * data[idx].T @ data
+    for idx, bold in enumerate(data_bin):
+        fc = 1/n_timesteps * data[idx].T @ data[idx]
         J_max = optimize.fmin_cg(loss, x0=J.flatten(), fprime=gradient, args=(bold, beta))
         J_max = np.reshape(J_max, (n_rois, n_rois))
         sim = IsingSimulation(n_rois, beta, coupling_mat = True, J=J_max)
         for i in range(eq_steps):
             sim.step()
         _, sim_fc = sim.getTimeseries(sim_timesteps)
-        corrs[i] = np.corrcoef(np.triu(fc).flatten(), np.triu(sim_fc).flatten())[0, 1]
+        corrs[idx] = np.corrcoef(np.triu(fc).flatten(), np.triu(sim_fc).flatten())[0, 1]
     return np.mean(corrs), np.std(corrs)
 
-betas = np.linspace(0, 1, 2)
-results = Parallel(n_jobs=20)(delayed(beta_optimization)(data, i) for i in betas)
+betas = np.linspace(0, 2, 50)
+results = Parallel(n_jobs=20)(delayed(beta_optimization)(data, data_bin, i) for i in betas)
 file = open('../results/beta_optimization.pkl', 'wb')
 pickle.dump(results, file)
 results = np.array(results)
