@@ -10,6 +10,9 @@ from nilearn import image
 from nilearn.input_data import NiftiLabelsMasker
 from nilearn.connectome import ConnectivityMeasure
 from scipy import optimize
+from sklearn.model_selection import train_test_split, cross_validate
+from sklearn import svm
+from sklearn.metrics import confusion_matrix, accuracy_score, mean_squared_error, f1_score, precision_score, recall_score
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -32,6 +35,8 @@ class Abide():
                     labels = 'aut',
                     pre_parcellated = True,
                     timeseries_dir = '../../data/',
+                    scale='AAL',
+                    atlas='AAL'
                 ):
 
         self.pre_parcellated = pre_parcellated
@@ -45,6 +50,8 @@ class Abide():
             self.func = []
             self._sub_ids = [] 
             self.meta_data = pd.read_csv(meta_file)
+            self.scale = scale
+            self.atlas = atlas
             return 
 
         try:
@@ -79,6 +86,8 @@ class Abide():
                 filtered_func_files.append(os.path.join(func_files_dir, i))
                 self._sub_ids.append(sub_id)
         self.n_samples = len(filtered_func_files)
+        self.scale = scale
+        self.atlas = atlas
         self.func = filtered_func_files
     
     def __loss(self, J, s, beta):
@@ -100,9 +109,9 @@ class Abide():
         grad = grad * beta/self.n_timesteps
         return -grad.flatten()
 
-    def parcellate(self, scale, atlas_filename):
+    def parcellate(self):
         res = []
-        atlas = atlas_filename
+        atlas = self.atlas
         os.mkdir(join(self.timeseries_dir, atlas_filename))
         masker = NiftiLabelsMasker(labels_img=atlas_filename,
                                     memory='nilearn_cache')
@@ -115,17 +124,17 @@ class Abide():
         print('parcellation done')
         return res
 
-    def get_timeseries(self, scale, atlas_filename): 
+    def get_timeseries(self): 
         excluded_subjects = pd.DataFrame(columns=self.meta_data.columns)
         if not self.pre_parcellated:
-            self.parcellate(scale, atlas_filename)
+            self.parcellate()
 
         timeseries = []
         IDs_subject = []
         diagnosis = []
         age = []
         sex = []
-        atlas = atlas_filename
+        atlas = self.atlas
         subject_ids = self.meta_data['SUB_ID']
         timeseries = []
         t_max = 0
@@ -159,15 +168,15 @@ class Abide():
         self.n_rois = timeseries.shape[2]
         return timeseries, IDs_subject, diagnosis, age, sex
     
-    def sFC(self, scale, atlas):
-        data, ID, diag, age, sex = self.get_timeseries(scale, atlas)
+    def sFC(self):
+        data, ID, diag, age, sex = self.get_timeseries()
         correlation_measure = ConnectivityMeasure(kind='correlation', vectorize=True, discard_diagonal= True)
         correlation_matrices = correlation_measure.fit_transform(data)
         return correlation_matrices, ID, diag, age, sex
     
     
-    def ising_coupling(self, scale, atlas):
-        data, ID, diag, age, sex = self.get_timeseries(scale, atlas)
+    def ising_coupling(self):
+        data, ID, diag, age, sex = self.get_timeseries()
         data[np.where(data >= 0)] = 1
         data[np.where(data < 0)] = -1
         J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
