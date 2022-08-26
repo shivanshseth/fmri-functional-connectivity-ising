@@ -16,8 +16,6 @@ from scipy.stats import pearsonr
 from abide_dataset import Abide
 from nilearn.connectome import ConnectivityMeasure
 from sklearn.dummy import DummyClassifier
-from dtw import *
-from fastdtw import fastdtw
 
 def train_test(
         scale, 
@@ -42,7 +40,7 @@ def train_test(
         'prec': 'precision',
         'rec': 'recall'
     }
-    scores = cross_validate(clf, rep_data, aut_labels, scoring=scoring, cv = 5)  
+    scores = cross_validate(clf, rep_data, aut_labels, scoring=scoring, cv = 2)  
 #     print(scores)
 #     print(accuracy)
     print("Accuracy of Autism prediction: ", scores['test_acc'].mean()*100, "%")
@@ -61,5 +59,7 @@ def train_test(
 df = pd.DataFrame(columns = ['Atlas', 'Representation',  'Accuracy', 'acc_std', 'F1', 'f1_std', 'Precision', 'prec_std', 'Recall', 'rec_stds'])
 dataset = Abide(sites='NYU', scale='AAL', atlas='AAL')
 rep, ID, diag, age, sex = dataset.ising_coupling()
+print(rep.shape)
+print(diag)
 res_df = train_test('AAL', 'ising', rep, diag, df, age, sex, True)
 print(res_df)

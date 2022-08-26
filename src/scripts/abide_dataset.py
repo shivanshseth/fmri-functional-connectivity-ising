@@ -184,10 +184,14 @@ class Abide():
         np.fill_diagonal(J, 0)
         beta = 0.1
         reps = []
+        diag = np.array(diag) - 1
+        # idx = np.where(diag > 0)[0][:2]
+        # data = np.vstack((data[:2], data[idx]))
+        # diag = np.concatenate((diag[:2], diag[idx]))
         for i in data:
-            J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(i, beta))
+            J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(i, beta), disp=False)
             reps.append(J_max)
-        reps = np.array(J_max)
+        reps = np.array(reps)
         return reps, ID, diag, age, sex
         
 
