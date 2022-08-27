@@ -110,11 +110,39 @@ class Abide():
         grad = grad * beta/self.n_timesteps
         return -grad.flatten()
 
+
+    def gradient_descent(self, max_iterations,w_init,
+                        obj_func,grad_func,extra_param = (),
+                        learning_rate=0.05,momentum=0.8, threshold=0.001, disp=False):
+        
+        w = w_init
+        w_history = [w]
+        f_history = [obj_func(w,*extra_param)]
+        delta_w = np.zeros(w.shape)
+        i = 0
+        diff = 1.0e10
+        
+        while i<max_iterations and diff > threshold:
+            grad = grad_func(w,*extra_param)
+            # print("from func", grad.shape)
+            grad = np.reshape(grad, (self.n_rois, self.n_rois))
+            # print(grad.shape)
+            delta_w = -learning_rate*grad
+            w = w+delta_w
+            f_history.append(obj_func(w,*extra_param))
+            w_history.append(w)
+            if i%10 == 0 and disp: 
+                print(f"iteration: {i} loss: {f_history[-1]} grad: {np.sum(grad)}")
+            i+=1
+            diff = np.absolute(f_history[-1]-f_history[-2])
+        w_max = w_history(f_history.index(min(f_history))) 
+        return w_max
+
     def parcellate(self):
         res = []
         atlas = self.atlas
-        os.mkdir(join(self.timeseries_dir, atlas_filename))
-        masker = NiftiLabelsMasker(labels_img=atlas_filename,
+        os.mkdir(join(self.timeseries_dir, self.atlas))
+        masker = NiftiLabelsMasker(labels_img=self.atlas,
                                     memory='nilearn_cache')
         print('getting parcellated time series...')
         for i in self.func:
@@ -176,12 +204,15 @@ class Abide():
         diag = np.array(diag)
         return correlation_matrices, ID, diag, age, sex
     
-    def ising_optimize(self, bold, beta, J): 
+    def ising_optimize_cg(self, bold, beta, J): 
             J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(bold, beta), disp=False)
             return J_max
-
     
-    def ising_coupling(self):
+    def ising_optimize_gd(self, bold, beta, J, iterations=500, alpha=2): 
+            J_max = self.gradient_descent(iterations, J, self.__loss, self.__gradient, extra_param=(bold, beta) , learning_rate=alpha, threshold=0.005, disp=False)
+            return J_max
+
+    def ising_coupling(self, method = "CG"):
         data, ID, diag, age, sex = self.get_timeseries()
         data[np.where(data >= 0)] = 1
         data[np.where(data < 0)] = -1
@@ -194,7 +225,10 @@ class Abide():
         # idx = np.where(diag > 0)[0][:2]
         # data = np.vstack((data[:2], data[idx]))
         # diag = np.concatenate((diag[:2], diag[idx]))
-        reps = Parallel(n_jobs=20)(delayed(self.ising_optimize)(i, beta, J) for i in data)
+        if method == 'CG':
+            reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_cg)(i, beta, J) for i in data)
+        elif method == 'GD':
+            reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_gd)(i, beta, J) for i in data)
         #for i in data:
         #    J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(i, beta), disp=False)
         #    reps.append(J_max)
