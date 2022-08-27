@@ -5,5 +5,5 @@
 #SBATCH --time=72:00:00
 #SBATCH --mail-user=shivansh.seth@research.iiit.ac.in
 
-~/miniconda3/envs/brain/bin/python -u classifier.py > cgd_classifier.py
+~/miniconda3/envs/brain/bin/python -u classifier.py > cgd_classifier.log
 

@@ -13,6 +13,7 @@ from scipy import optimize
 from sklearn.model_selection import train_test_split, cross_validate
 from sklearn import svm
 from sklearn.metrics import confusion_matrix, accuracy_score, mean_squared_error, f1_score, precision_score, recall_score
+from joblib import Parallel, delayed
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -172,8 +173,13 @@ class Abide():
         data, ID, diag, age, sex = self.get_timeseries()
         correlation_measure = ConnectivityMeasure(kind='correlation', vectorize=True, discard_diagonal= True)
         correlation_matrices = correlation_measure.fit_transform(data)
+        diag = np.array(diag)
         return correlation_matrices, ID, diag, age, sex
     
+    def ising_optimize(self, bold, beta, J): 
+            J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(bold, beta), disp=False)
+            return J_max
+
     
     def ising_coupling(self):
         data, ID, diag, age, sex = self.get_timeseries()
@@ -188,9 +194,10 @@ class Abide():
         # idx = np.where(diag > 0)[0][:2]
         # data = np.vstack((data[:2], data[idx]))
         # diag = np.concatenate((diag[:2], diag[idx]))
-        for i in data:
-            J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(i, beta), disp=False)
-            reps.append(J_max)
+        reps = Parallel(n_jobs=20)(delayed(self.ising_optimize)(i, beta, J) for i in data)
+        #for i in data:
+        #    J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(i, beta), disp=False)
+        #    reps.append(J_max)
         reps = np.array(reps)
         return reps, ID, diag, age, sex
         
