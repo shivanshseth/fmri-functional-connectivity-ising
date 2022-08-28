@@ -135,8 +135,8 @@ class Abide():
                 print(f"iteration: {i} loss: {f_history[-1]} grad: {np.sum(grad)}")
             i+=1
             diff = np.absolute(f_history[-1]-f_history[-2])
-        w_max = w_history(f_history.index(min(f_history))) 
-        return w_max
+        w_max = w_history[f_history.index(min(f_history))]
+        return w_max.flatten()
 
     def parcellate(self):
         res = []
