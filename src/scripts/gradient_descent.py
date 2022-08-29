@@ -58,8 +58,8 @@ def gradient_descent(max_iterations,w_init,
     
     return w_history,f_history
 
-dataset = Abide(sites='NYU')
-data, ids, diagnosis, age, sex = dataset.get_timeseries('AAL', 'AAL') 
+dataset = Abide(sites='NYU', scale='AAL', atlas='AAL')
+data, ids, diagnosis, age, sex = dataset.get_timeseries() 
 data_bin = data.copy()
 data_bin[np.where(data >= 0)] = 1
 data_bin[np.where(data < 0)] = -1
@@ -87,10 +87,8 @@ def beta_optimization(data, data_bin, beta):
         corrs[idx] = np.corrcoef(np.triu(fc).flatten(), np.triu(sim_fc).flatten())[0, 1]
     return np.mean(corrs), np.std(corrs)
 
-betas = np.linspace(0, 2, 50)
+betas = np.linspace(0, 1, 100)
 results = Parallel(n_jobs=20)(delayed(beta_optimization)(data, data_bin, i) for i in betas)
 #results = beta_optimization(data, data_bin, 0.1)
-file = open('../results/beta_optimization_gd.pkl', 'wb')
-pickle.dump(results, file)
 results = np.array(results)
-np.savetxt('../results/beta_optimization_gd.csv', results)
+np.save('../results/beta_optimization_gd_fine', results)
