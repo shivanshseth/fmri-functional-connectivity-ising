@@ -57,14 +57,14 @@ def train_test(
     ]
     return df
 df = pd.DataFrame(columns = ['Atlas', 'Representation',  'Accuracy', 'acc_std', 'F1', 'f1_std', 'Precision', 'prec_std', 'Recall', 'rec_stds'])
-dataset = Abide(sites='NYU', scale='AAL', atlas='AAL')
+dataset = Abide(sites='all', scale='AAL', atlas='AAL')
 print("starting preprocessing")
 cgd, ID, diag, age, sex = dataset.ising_coupling(method='CG')
 gd, ID, diag, age, sex = dataset.ising_coupling(method='GD')
 sfc, ID, diag, age, sex = dataset.sFC()
-np.save('../../data/gd_nyu', gd)
-np.save('../../data/cgd_nyu', cgd)
-np.save('../../data/diag_nyu', diag)
+np.save('../../data/gd_all', gd)
+np.save('../../data/cgd_all', cgd)
+np.save('../../data/diag_all', diag)
 print("preprocessing finished")
 print("starting training")
 clf = DummyClassifier(strategy="most_frequent")
