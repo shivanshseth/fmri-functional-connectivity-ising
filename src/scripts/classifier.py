@@ -9,6 +9,7 @@ from nitime.analysis import SpectralAnalyzer, FilterAnalyzer, NormalizationAnaly
 import matplotlib.pyplot as plt
 from scipy import stats, signal
 from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.feature_selection import SelectPercentile, f_classif
 from sklearn import svm
 from sklearn.metrics import confusion_matrix, accuracy_score, mean_squared_error, f1_score, precision_score, recall_score
 import matplotlib.pyplot as plt
@@ -28,6 +29,8 @@ def train_test(
         train_acc=False,
     ):
     clf = svm.SVC(kernel='linear')
+    fs = SelectPercentile(f_classif, 10)
+    rep_data = fs.fit_transform(rep_data, aut_labels)
     if train_acc: 
         X_train, X_test, y_train, y_test = train_test_split(rep_data, aut_labels, test_size=0.4, random_state=10)
         clf.fit(X_train, y_train)
@@ -57,14 +60,14 @@ def train_test(
     ]
     return df
 df = pd.DataFrame(columns = ['Atlas', 'Representation',  'Accuracy', 'acc_std', 'F1', 'f1_std', 'Precision', 'prec_std', 'Recall', 'rec_stds'])
-dataset = Abide(sites='all', scale='AAL', atlas='AAL')
+dataset = Abide(sites='NYU', scale='AAL', atlas='AAL')
 print("starting preprocessing")
 cgd, ID, diag, age, sex = dataset.ising_coupling(method='CG')
 gd, ID, diag, age, sex = dataset.ising_coupling(method='GD')
 sfc, ID, diag, age, sex = dataset.sFC()
-np.save('../../data/gd_all', gd)
-np.save('../../data/cgd_all', cgd)
-np.save('../../data/diag_all', diag)
+np.save('../../data/gd_nyu', gd)
+np.save('../../data/cgd_nyu', cgd)
+np.save('../../data/diag_nyu', diag)
 print("preprocessing finished")
 print("starting training")
 clf = DummyClassifier(strategy="most_frequent")
@@ -72,8 +75,8 @@ clf.fit(sfc, diag)
 y_pred = clf.predict(sfc)
 acc = accuracy_score(diag, y_pred)
 print(f"most freq acc: {acc}")
-res_df = train_test('AAL', 'ising_cgd', cgd, diag, df, age, sex, True)
-res_df = train_test('AAL', 'sFC', sfc, diag, res_df, age, sex, True)
+# res_df = train_test('AAL', 'ising_cgd', cgd, diag, df, age, sex, True)
+res_df = train_test('AAL', 'sFC', sfc, diag, df, age, sex, True)
 res_df = train_test('AAL', 'ising_gd', gd, diag, df, age, sex, True)
-res_df.to_csv('../results/classification_5fold.csv')
+res_df.to_csv('../results/classification_feature_selection.csv')
 print(res_df)
