@@ -29,7 +29,7 @@ def train_test(
         train_acc=False,
     ):
     clf = svm.SVC(kernel='linear')
-    fs = SelectPercentile(f_classif, 10)
+    fs = SelectPercentile(f_classif, percentile=10)
     rep_data = fs.fit_transform(rep_data, aut_labels)
     if train_acc: 
         X_train, X_test, y_train, y_test = train_test_split(rep_data, aut_labels, test_size=0.4, random_state=10)
@@ -60,14 +60,13 @@ def train_test(
     ]
     return df
 df = pd.DataFrame(columns = ['Atlas', 'Representation',  'Accuracy', 'acc_std', 'F1', 'f1_std', 'Precision', 'prec_std', 'Recall', 'rec_stds'])
-dataset = Abide(sites='NYU', scale='AAL', atlas='AAL')
+dataset = Abide(sites='all', scale='AAL', atlas='AAL')
 print("starting preprocessing")
-cgd, ID, diag, age, sex = dataset.ising_coupling(method='CG')
-gd, ID, diag, age, sex = dataset.ising_coupling(method='GD')
+#cgd, ID, diag, age, sex = dataset.ising_coupling(method='CG')
+#gd, ID, diag, age, sex = dataset.ising_coupling(method='GD')
 sfc, ID, diag, age, sex = dataset.sFC()
-np.save('../../data/gd_nyu', gd)
-np.save('../../data/cgd_nyu', cgd)
-np.save('../../data/diag_nyu', diag)
+gd = np.load('../../data/gd_all.npy')
+diag = np.load('../../data/diag_all.npy')
 print("preprocessing finished")
 print("starting training")
 clf = DummyClassifier(strategy="most_frequent")
