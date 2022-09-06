@@ -17,6 +17,7 @@ from scipy.stats import pearsonr
 from abide_dataset import Abide
 from nilearn.connectome import ConnectivityMeasure
 from sklearn.dummy import DummyClassifier
+from sklearn.pipeline import Pipeline
 
 def train_test(
         scale, 
@@ -28,15 +29,19 @@ def train_test(
         age_labels=None,
         train_acc=False,
     ):
-    clf = svm.SVC(kernel='linear')
-    fs = SelectPercentile(f_classif, percentile=10)
-    rep_data = fs.fit_transform(rep_data, aut_labels)
+    # clf = svm.SVC(kernel='linear')
+    # fs = SelectPercentile(f_classif, percentile=10)
+    # rep_data = fs.fit_transform(rep_data, aut_labels)
     if train_acc: 
         X_train, X_test, y_train, y_test = train_test_split(rep_data, aut_labels, test_size=0.4, random_state=10)
         clf.fit(X_train, y_train)
         y_pred = clf.predict(X_train)
         accuracy = accuracy_score(y_pred, y_train)
         print("Training Accuracy of Autism prediction: ", accuracy*100, "%")
+    clf = Pipeline([
+        ('feature_selection', SelectPercentile(percentile=10)),
+        ('classification', svm.SVC(kernel='linear'))
+    ])
     scoring = {
         'acc': 'accuracy',
         'f1': 'f1',
