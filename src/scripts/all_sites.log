@@ -1,0 +1,11 @@
+starting preprocessing
+preprocessing finished
+starting training
+most freq acc: 0.5338882282996433
+Accuracy of Autism prediction:  60.40336134453781 %
+Accuracy of Autism prediction:  55.89075630252102 %
+  Atlas Representation   Accuracy  ...  prec_std    Recall  rec_stds
+0   AAL            sFC  60.403361  ...  0.042956  0.586731  0.063409
+1   AAL       ising_gd  55.890756  ...  0.050996  0.520192  0.114715
+
+[2 rows x 10 columns]

@@ -173,7 +173,7 @@ class Abide():
                                 str(subject_id) + '_timeseries.txt')
             idx = 0
             if not os.path.exists(this_timeseries):
-                excluded_subjects = excluded_subjects.append(this_pheno)
+                excluded_subjects.loc[len(excluded_subjects)] = this_pheno.values.flatten().tolist()
                 continue
             if (this_pheno['SITE_ID'].iloc[0] in self.sites or self.sites == 'all'):
                 t = np.loadtxt(this_timeseries)
@@ -210,6 +210,11 @@ class Abide():
     
     def ising_optimize_gd(self, bold, beta, J, iterations=500, alpha=2): 
             J_max = self.gradient_descent(iterations, J, self.__loss, self.__gradient, extra_param=(bold, beta) , learning_rate=alpha, threshold=0.005, disp=False)
+            J_max = J_max.reshape(self.n_rois, self.n_rois)
+            #if not np.all(np.abs(J_max-J_max.T) < 1e-8):
+                #print('not symmetric')
+
+            J_max = J_max[np.triu_indices(J_max.shape[0], k = 1)].flatten()
             return J_max
 
     def ising_coupling(self, method = "CG"):
@@ -237,5 +242,5 @@ class Abide():
         
 
 if __name__ == '__main__':
-    dataset = Abide(sites='NYU')
-    dataset.ising_coupling('AAL', 'AAL')
+    dataset = Abide(sites='NYU', atlas='AAL', scale='AAL')
+    dataset.ising_coupling(method='GD')
