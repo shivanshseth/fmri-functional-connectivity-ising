@@ -199,7 +199,7 @@ class Abide():
     
     def sFC(self):
         data, ID, diag, age, sex = self.get_timeseries()
-        correlation_measure = ConnectivityMeasure(kind='correlation', vectorize=True, discard_diagonal= True)
+        correlation_measure = ConnectivityMeasure(kind='correlation', vectorize=True)
         correlation_matrices = correlation_measure.fit_transform(data)
         diag = np.array(diag)
         return correlation_matrices, ID, diag, age, sex
