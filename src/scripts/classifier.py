@@ -33,7 +33,7 @@ def train_test(
     # fs = SelectPercentile(f_classif, percentile=10)
     # rep_data = fs.fit_transform(rep_data, aut_labels)
     clf = Pipeline([
-        ('feature_selection', SelectPercentile(percentile=10)),
+        ('feature_selection', SelectPercentile(f_classif, percentile=10)),
         ('classification', svm.SVC(kernel='linear'))
     ])
     scoring = {
