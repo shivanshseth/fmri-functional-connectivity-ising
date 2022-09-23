@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split, cross_validate
 from sklearn import svm
 from sklearn.metrics import confusion_matrix, accuracy_score, mean_squared_error, f1_score, precision_score, recall_score
 from joblib import Parallel, delayed
+from ising_simulation import IsingSimulation
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -138,6 +139,32 @@ class Abide():
         w_max = w_history[f_history.index(min(f_history))]
         return w_max.flatten()
 
+    def beta_optimization(self, bold, bold_bin, beta):
+        J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
+        J = (J + J.T)/2 # making it symmetric
+        np.fill_diagonal(J, 0)
+        fc = 1/self.n_timesteps * bold.T @ bold
+        # J_max = optimize.fmin_cg(loss, x0=J.flatten(), fprime=gradient, args=(bold, beta))
+        J_max = self.gradient_descent(self.iterations, J, self.__loss, self.__gradient, extra_param=(bold_bin, beta) , learning_rate=self.alpha, threshold=0.005, disp=False)
+        J_max = np.reshape(J_max, (self.n_rois, self.n_rois))
+        sim = IsingSimulation(self.n_rois, beta, coupling_mat = True, J=J_max)
+        for i in range(self.eq_steps):
+            sim.step()
+        _, sim_fc = sim.getTimeseries(self.sim_timesteps)
+        corr = np.corrcoef(np.triu(fc).flatten(), np.triu(sim_fc).flatten())[0, 1]
+        return J_max, corr
+    
+    def beta_optimization_wrapper(self, bold):
+        bold_bin = np.copy(bold)
+        bold_bin[np.where(bold_bin >= 0)] = 1
+        bold_bin[np.where(bold_bin < 0)] = -1
+        results = Parallel(n_jobs=5)(delayed(self.beta_optimization)(bold, bold_bin, i) for i in self.beta_range)
+        Js, corrs = np.array(results).T
+        max_idx = corrs.index(max(corrs))
+        beta_max = self.beta_range[max_idx]
+        J_max = Js[max_idx]
+        J_max, beta_max
+
     def parcellate(self):
         res = []
         atlas = self.atlas
@@ -205,42 +232,63 @@ class Abide():
         return correlation_matrices, ID, diag, age, sex
     
     def ising_optimize_cg(self, bold, beta, J): 
-            J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(bold, beta), disp=False)
-            return J_max
+        J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(bold, beta), disp=False)
+        return J_max
     
-    def ising_optimize_gd(self, bold, beta, J, iterations=500, alpha=2): 
-            J_max = self.gradient_descent(iterations, J, self.__loss, self.__gradient, extra_param=(bold, beta) , learning_rate=alpha, threshold=0.005, disp=False)
-            J_max = J_max.reshape(self.n_rois, self.n_rois)
-            #if not np.all(np.abs(J_max-J_max.T) < 1e-8):
-                #print('not symmetric')
+    def ising_optimize_gd(self, bold, beta, J): 
+        J_max = self.gradient_descent(self.iterations, J, self.__loss, self.__gradient, extra_param=(bold, beta) , learning_rate=self.alpha, threshold=0.005, disp=False)
+        J_max = J_max.reshape(self.n_rois, self.n_rois)
+        #if not np.all(np.abs(J_max-J_max.T) < 1e-8):
+            #print('not symmetric')
 
-            J_max = J_max[np.triu_indices(J_max.shape[0], k = 1)].flatten()
-            return J_max
+        J_max = J_max[np.triu_indices(J_max.shape[0], k = 1)].flatten()
+        return J_max
 
-    def ising_coupling(self, method = "CG"):
+    def ising_coupling(self, method = "GD", iterations=500, alpha=2, beta_range=np.linspace(0, 0.30, 31), sim_timesteps = -1 , beta = False):
+        # setting parameters for GD
+        if sim_timesteps == -1: 
+            self.sim_timesteps = self.n_timesteps
+        else: self.sim_timesteps = sim_timesteps
+        self.iterations = iterations
+        self.alpha = alpha
+        self.beta_range = beta_range
         data, ID, diag, age, sex = self.get_timeseries()
-        data[np.where(data >= 0)] = 1
-        data[np.where(data < 0)] = -1
+        data_bin = np.copy(data)
+        data_bin[np.where(data_bin >= 0)] = 1
+        data_bin[np.where(data_bin < 0)] = -1
         J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
         J = (J + J.T)/2 # making it symmetric
         np.fill_diagonal(J, 0)
         beta = 0.1
         reps = []
+        betas = []
         diag = np.array(diag) - 1
         # idx = np.where(diag > 0)[0][:2]
         # data = np.vstack((data[:2], data[idx]))
         # diag = np.concatenate((diag[:2], diag[idx]))
-        if method == 'CG':
-            reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_cg)(i, beta, J) for i in data)
-        elif method == 'GD':
-            reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_gd)(i, beta, J) for i in data)
+        # if method == 'CG':
+        #     reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_cg)(i, beta, J) for i in data)
+        if beta:
+            reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_gd)(i, beta, J) for i in data_bin)
         #for i in data:
+        else: 
+            reps = []
+            betas = []
+            for idx, i in enumerate(data):
+                print(f'Subject: {idx}')
+                J, b = self.beta_optimization_wrapper(i)
+                reps.append(J)
+                betas.append(b)
         #    J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(i, beta), disp=False)
         #    reps.append(J_max)
         reps = np.array(reps)
-        return reps, ID, diag, age, sex
+        betas = np.array(betas)
+        return reps, betas ,ID, diag, age, sex
         
 
 if __name__ == '__main__':
     dataset = Abide(sites='NYU', atlas='AAL', scale='AAL')
-    dataset.ising_coupling(method='GD')
+    reps, betas, ID, diag, age, sex = dataset.ising_coupling(method='GD')
+    np.save('../../data/ising_nyu.npy', reps)
+    np.save('../../data/beta_nyu.npy', betas)
+    np.save('../../data/diag_nyu.npy', diag)
