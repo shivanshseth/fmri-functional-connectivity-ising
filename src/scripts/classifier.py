@@ -19,6 +19,7 @@ from nilearn.connectome import ConnectivityMeasure
 from sklearn.dummy import DummyClassifier
 from sklearn.pipeline import Pipeline
 
+#knp.random.seed(0)
 def train_test(
         scale, 
         rep, 
@@ -33,7 +34,7 @@ def train_test(
     # fs = SelectPercentile(f_classif, percentile=10)
     # rep_data = fs.fit_transform(rep_data, aut_labels)
     clf = Pipeline([
-        ('feature_selection', SelectPercentile(f_classif, percentile=10)),
+            #('feature_selection', SelectPercentile(f_classif, percentile=10)),
         ('classification', svm.SVC(kernel='linear'))
     ])
     scoring = {
@@ -59,24 +60,31 @@ def train_test(
     ]
     return df
 df = pd.DataFrame(columns = ['Atlas', 'Representation',  'Accuracy', 'acc_std', 'F1', 'f1_std', 'Precision', 'prec_std', 'Recall', 'rec_stds'])
-dataset = Abide(sites='all', scale='AAL', atlas='AAL')
-print("starting preprocessing")
-#cgd, ID, diag, age, sex = dataset.ising_coupling(method='CG')
-#gd, ID, diag, age, sex = dataset.ising_coupling(method='GD')
-sfc, ID, diag, age, sex = dataset.sFC()
-print(sfc.shape)
-#np.save('../../data/gd_upper.npy', gd)
-#np.save('../../data/diag.npy', diag)
-np.save('../../data/sfc.npy', sfc) 
-print("preprocessing finished")
-print("starting training")
-clf = DummyClassifier(strategy="most_frequent")
-clf.fit(sfc, diag)
-y_pred = clf.predict(sfc)
-acc = accuracy_score(diag, y_pred)
-print(f"most freq acc: {acc}")
-# res_df = train_test('AAL', 'ising_cgd', cgd, diag, df, age, sex, True)
-res_df = train_test('AAL', 'sFC', sfc, diag, df, age, sex, True)
-#res_df = train_test('AAL', 'ising_gd', gd, diag, df, age, sex, True)
-#res_df.to_csv('../results/cls_all_upper.csv')
-print(res_df)
+site = 'SDSU'
+#sites = pd.read_csv('../../metadata.csv')['SITE_ID']
+sites = ['NYU']
+for site in sites:
+    dataset = Abide(sites=site, scale='AAL', atlas='AAL')
+    print("starting preprocessing")
+    #cgd, ID, diag, age, sex = dataset.ising_coupling(method='CG')
+    #gd, ID, diag, age, sex = dataset.ising_coupling(method='GD')
+    ising = np.load(f'../../data/ising_{site}.npy')
+    ising = ising.reshape(ising.shape[0], -1)
+    print(ising.shape)
+    sfc, ID, diag, age, sex = dataset.sFC()
+    diag = diag - 1
+    #np.save('../../data/gd_upper.npy', gd)
+    #np.save('../../data/diag.npy', diag)
+    #np.save('../../data/sfc.npy', sfc) 
+    print("preprocessing finished")
+    print("starting training")
+    clf = DummyClassifier(strategy="most_frequent")
+    clf.fit(sfc, diag)
+    y_pred = clf.predict(sfc)
+    acc = accuracy_score(diag, y_pred)
+    print(f"most freq acc: {acc}")
+    # res_df = train_test('AAL', 'ising_cgd', cgd, diag, df, age, sex, True)
+    res_df = train_test('AAL', 'sFC', sfc, diag, df, age, sex, True)
+    res_df = train_test('AAL', 'ising', ising, diag, df, age, sex, True)
+    res_df.to_csv(f'../results/cls_{site}.csv')
+    print(res_df)

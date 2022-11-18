@@ -49,7 +49,8 @@ class Abide():
             self.age_labels = []
             self.sex_labels = []
             self.aut_labels = []
-            self.func = []
+            func_files = os.listdir(join(timeseries_dir, atlas))
+            self.func = func_files
             self._sub_ids = [] 
             self.meta_data = pd.read_csv(meta_file)
             self.scale = scale
@@ -90,8 +91,8 @@ class Abide():
         self.n_samples = len(filtered_func_files)
         self.scale = scale
         self.atlas = atlas
-        self.func = filtered_func_files
-    
+        self.func = filtered_func_files 
+
     def __loss(self, J, s, beta):
         J = np.reshape(J, (self.n_rois, self.n_rois))
         term1 = 0
@@ -139,31 +140,42 @@ class Abide():
         w_max = w_history[f_history.index(min(f_history))]
         return w_max.flatten()
 
-    def beta_optimization(self, bold, bold_bin, beta):
+    def beta_optimization(self, bold, bold_bin, beta, sfc, n_folds = 5):
         J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
         J = (J + J.T)/2 # making it symmetric
         np.fill_diagonal(J, 0)
-        fc = 1/self.n_timesteps * bold.T @ bold
+        #fc = 1/self.n_timesteps * bold.T @ bold
+        fc = sfc 
         # J_max = optimize.fmin_cg(loss, x0=J.flatten(), fprime=gradient, args=(bold, beta))
         J_max = self.gradient_descent(self.iterations, J, self.__loss, self.__gradient, extra_param=(bold_bin, beta) , learning_rate=self.alpha, threshold=0.005, disp=False)
         J_max = np.reshape(J_max, (self.n_rois, self.n_rois))
         sim = IsingSimulation(self.n_rois, beta, coupling_mat = True, J=J_max)
         for i in range(self.eq_steps):
             sim.step()
-        _, sim_fc = sim.getTimeseries(self.sim_timesteps)
-        corr = np.corrcoef(np.triu(fc).flatten(), np.triu(sim_fc).flatten())[0, 1]
-        return J_max, corr
+        corr = 0
+        for i in range(n_folds):
+            _, sim_fc = sim.getTimeseries(self.sim_timesteps)
+            corr += np.corrcoef(fc, sim_fc[np.triu_indices(self.n_rois)].flatten())[0][1]
+        return J_max, corr/n_folds
     
-    def beta_optimization_wrapper(self, bold):
+    def beta_optimization_wrapper(self, bold, sfc):
         bold_bin = np.copy(bold)
         bold_bin[np.where(bold_bin >= 0)] = 1
         bold_bin[np.where(bold_bin < 0)] = -1
-        results = Parallel(n_jobs=5)(delayed(self.beta_optimization)(bold, bold_bin, i) for i in self.beta_range)
+        #print('beta range', self.beta_range)
+        results = Parallel(n_jobs=20)(delayed(self.beta_optimization)(bold, bold_bin, i, sfc) for i in self.beta_range)
         Js, corrs = np.array(results).T
-        max_idx = corrs.index(max(corrs))
+        Js = list(Js)
+        max_idx = np.argmax(corrs)
+        corrs = list(corrs)
+        print('idx', max_idx)
+        print('max corr:', corrs[max_idx])
         beta_max = self.beta_range[max_idx]
+        print('beta max', beta_max)
         J_max = Js[max_idx]
-        J_max, beta_max
+        J_corr = np.corrcoef(sfc, J_max[np.triu_indices(self.n_rois)].flatten())[0][1]
+        print('J corr', J_corr)
+        return J_max, beta_max, corrs[max_idx]
 
     def parcellate(self):
         res = []
@@ -187,18 +199,22 @@ class Abide():
 
         timeseries = []
         IDs_subject = []
-        diagnosis = []
         age = []
         sex = []
+        diagnosis = []
         atlas = self.atlas
         subject_ids = self.meta_data['SUB_ID']
         timeseries = []
         t_max = 0
-        for index, subject_id in enumerate(subject_ids):
+        for f in self.func:
+            try:
+                subject_id = int(f[f.find('5'):].split('_')[0])
+            except:
+                print(f)
+                subject_id = 'x'
+                assert False, "remove above file from atlas folder"
             this_pheno = self.meta_data[self.meta_data['SUB_ID'] == subject_id]
-            this_timeseries = join(self.timeseries_dir, atlas,
-                                str(subject_id) + '_timeseries.txt')
-            idx = 0
+            this_timeseries = join(self.timeseries_dir, atlas, f)
             if not os.path.exists(this_timeseries):
                 excluded_subjects.loc[len(excluded_subjects)] = this_pheno.values.flatten().tolist()
                 continue
@@ -209,15 +225,14 @@ class Abide():
                     continue
                 t_max = max(t_max, t.shape[0])
                 timeseries.append(t)
-                idx = idx + 1
                 IDs_subject.append(subject_id)
                 diagnosis.append(this_pheno['DX_GROUP'].values[0])
                 age.append(this_pheno['AGE_AT_SCAN'].values[0])
                 sex.append(this_pheno['SEX'].values[0])
-        
         # Padding to fix anomalous scans
         for i, t in enumerate(timeseries):
             timeseries[i] = pad_along_axis(t, t_max, 0)
+        diagnosis = np.array(diagnosis) - 1
         timeseries = np.array(timeseries) 
         excluded_subjects.to_csv(join('../../data/excluded', atlas.replace('/', '-') +'.csv'))    
         self.n_timesteps = timeseries.shape[1]
@@ -226,10 +241,15 @@ class Abide():
     
     def sFC(self):
         data, ID, diag, age, sex = self.get_timeseries()
-        correlation_measure = ConnectivityMeasure(kind='correlation', vectorize=True)
-        correlation_matrices = correlation_measure.fit_transform(data)
-        diag = np.array(diag)
-        return correlation_matrices, ID, diag, age, sex
+        #correlation_measure = ConnectivityMeasure(kind='correlation', vectorize=True)
+        #correlation_matrices = correlation_measure.fit_transform(data)
+        corr = []
+        for i in data:
+            c = np.corrcoef(i.T)
+            c = c[np.triu_indices(self.n_rois)].flatten()
+            corr.append(c)
+        corr = np.array(corr)
+        return corr, ID, diag, age, sex
     
     def ising_optimize_cg(self, bold, beta, J): 
         J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(bold, beta), disp=False)
@@ -244,51 +264,103 @@ class Abide():
         J_max = J_max[np.triu_indices(J_max.shape[0], k = 1)].flatten()
         return J_max
 
-    def ising_coupling(self, method = "GD", iterations=500, alpha=2, beta_range=np.linspace(0, 0.30, 31), sim_timesteps = -1 , beta = False):
+    def ising_coupling(
+                    self, 
+                    method = "GD", 
+                    iterations=500, 
+                    alpha=2, 
+                    beta_range=np.linspace(0.01, 0.105, 20), 
+                    sim_timesteps = 300,
+                    beta = False, 
+                    eq_timesteps=50
+                    ):
         # setting parameters for GD
+        self.eq_steps = eq_timesteps
         if sim_timesteps == -1: 
             self.sim_timesteps = self.n_timesteps
         else: self.sim_timesteps = sim_timesteps
         self.iterations = iterations
         self.alpha = alpha
-        self.beta_range = beta_range
+        self.beta_range = [round(i, 2) for i in beta_range]
         data, ID, diag, age, sex = self.get_timeseries()
+        sfc, ID, diag1, age, sex = self.sFC()
         data_bin = np.copy(data)
         data_bin[np.where(data_bin >= 0)] = 1
         data_bin[np.where(data_bin < 0)] = -1
         J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
         J = (J + J.T)/2 # making it symmetric
         np.fill_diagonal(J, 0)
-        beta = 0.1
         reps = []
         betas = []
         diag = np.array(diag) - 1
-        # idx = np.where(diag > 0)[0][:2]
-        # data = np.vstack((data[:2], data[idx]))
-        # diag = np.concatenate((diag[:2], diag[idx]))
-        # if method == 'CG':
-        #     reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_cg)(i, beta, J) for i in data)
         if beta:
-            reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_gd)(i, beta, J) for i in data_bin)
-        #for i in data:
+            #reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_gd)(i, beta, J) for i in data_bin)
+            pass
         else: 
-            reps = []
-            betas = []
+            reps = np.zeros((len(data), self.n_rois, self.n_rois))
+            betas = np.zeros(len(data))
+            corrs = np.zeros(len(data))
+            print(f'Ising coupling: length of data = {len(data)}')
             for idx, i in enumerate(data):
-                print(f'Subject: {idx}')
-                J, b = self.beta_optimization_wrapper(i)
-                reps.append(J)
-                betas.append(b)
-        #    J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(i, beta), disp=False)
-        #    reps.append(J_max)
-        reps = np.array(reps)
-        betas = np.array(betas)
-        return reps, betas ,ID, diag, age, sex
+                print(f'Subject: {ID[idx]}')
+                print(i.shape)
+                J, b, c = self.beta_optimization_wrapper(i, sfc=sfc[idx])
+                reps[idx] = J
+                betas[idx] = b
+                corrs[idx] = c
+        return reps, betas, corrs, ID, diag, age, sex
         
 
 if __name__ == '__main__':
-    dataset = Abide(sites='NYU', atlas='AAL', scale='AAL')
-    reps, betas, ID, diag, age, sex = dataset.ising_coupling(method='GD')
-    np.save('../../data/ising_nyu.npy', reps)
-    np.save('../../data/beta_nyu.npy', betas)
-    np.save('../../data/diag_nyu.npy', diag)
+    atlas = 'AAL'
+    dataset = Abide(sites='NYU', atlas=atlas, scale=atlas)
+    sites = dataset.meta_data['SITE_ID'].unique()
+    all_ising = None
+    all_sfc = None 
+    all_diag = None
+    all_betas = None
+    sites = list(sites)
+    #sites.remove('NYU')
+    sites = ['NYU']
+    print(sites)
+    n_rois = 116
+    for site in sites:
+        print(site)
+        dataset = Abide(sites=site, atlas=atlas, scale=atlas)
+        betas = []
+        diag = []
+        corr = []
+        ising = []
+        J_corr = []
+        sfc, sub, diag, age, sex = dataset.sFC()
+        ising, betas, corr, sub1, diag1, age1, sex1 = dataset.ising_coupling()
+        print('ising shape:', ising[0][np.triu_indices(n_rois)].flatten().shape)
+        print('sfc shape:', sfc[0].flatten().shape)
+        print('fc and j corr:')
+        for i in range(ising.shape[0]):
+            k = np.corrcoef(sfc[i].flatten(), ising[i][np.triu_indices(n_rois)].flatten())[0][1]
+            J_corr.append(k)
+            print(k)
+        J_corr = np.array(J_corr)
+        assert np.array_equal(sub, sub1)
+        np.save(f'../../data/{atlas}_reps/diag_{site}.npy', diag)
+        np.save(f'../../data/{atlas}_reps/sfc_{site}.npy', sfc)
+        np.save(f'../../data/{atlas}_reps/ising_{site}.npy', ising)
+        np.save(f'../../data/{atlas}_reps/betas_{site}.npy', betas)
+        np.save(f'../../data/{atlas}_reps/corr_{site}.npy', corr)
+        np.save(f'../../data/{atlas}_reps/J_corr_{site}.npy', J_corr)
+        if all_sfc is not None:
+            all_ising = np.vstack((all_ising, ising))
+            all_sfc = np.vstack((all_sfc, sfc))
+            all_diag = np.hstack((all_diag, diag))
+            all_betas = np.hstack((all_betas, betas))
+        else:
+            all_ising = ising
+            all_sfc = sfc
+            all_diag = diag
+            all_betas = betas
+    
+    #np.save(f'../../data/CC200_reps/diag.npy', all_diag)
+    #np.save(f'../../data/CC200_reps/sfc.npy', all_sfc)
+    #np.save(f'../../data/CC200_reps/ising.npy', all_ising)
+    #np.save(f'../../data/CC200_reps/betas.npy', all_betas)

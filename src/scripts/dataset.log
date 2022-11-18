@@ -1,167 +1,845 @@
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
-not symmetric
+/home/shivansh.seth/miniconda3/envs/brain/lib/python3.8/site-packages/nilearn/input_data/__init__.py:27: FutureWarning: The import path 'nilearn.input_data' is deprecated in version 0.9. Importing from 'nilearn.input_data' will be possible at least until release 0.13.0. Please import from 'nilearn.maskers' instead.
+  warnings.warn(message, FutureWarning)
+['NYU']
+NYU
+Ising coupling: length of data = 167
+Subject: 0
+abide_dataset.py:167: VisibleDeprecationWarning: Creating an ndarray from ragged nested sequences (which is a list-or-tuple of lists-or-tuples-or ndarrays with different lengths or shapes) is deprecated. If you meant to do this, you must specify 'dtype=object' when creating the ndarray.
+  Js, corrs = np.array(results).T
+idx 3
+max corr: 0.8102023143786914
+beta max 0.08
+Subject: 1
+idx 7
+max corr: 0.8141692597211497
+beta max 0.11
+Subject: 2
+idx 4
+max corr: 0.8048026900382578
+beta max 0.08
+Subject: 3
+idx 8
+max corr: 0.8211226715452739
+beta max 0.12
+Subject: 4
+idx 4
+max corr: 0.8138612949880237
+beta max 0.08
+Subject: 5
+idx 17
+max corr: 0.8417272969385401
+beta max 0.19
+Subject: 6
+idx 13
+max corr: 0.826351720610034
+beta max 0.16
+Subject: 7
+idx 6
+max corr: 0.8433009873923629
+beta max 0.1
+Subject: 8
+idx 5
+max corr: 0.8232072906995445
+beta max 0.09
+Subject: 9
+idx 5
+max corr: 0.8136849950753546
+beta max 0.09
+Subject: 10
+idx 7
+max corr: 0.813573192220456
+beta max 0.11
+Subject: 11
+idx 4
+max corr: 0.7970451297818825
+beta max 0.08
+Subject: 12
+idx 7
+max corr: 0.8032515284160564
+beta max 0.11
+Subject: 13
+idx 11
+max corr: 0.8029595849159344
+beta max 0.14
+Subject: 14
+idx 9
+max corr: 0.8220429084936425
+beta max 0.12
+Subject: 15
+idx 8
+max corr: 0.8225702156404393
+beta max 0.12
+Subject: 16
+idx 1
+max corr: 0.8168297562375828
+beta max 0.06
+Subject: 17
+idx 5
+max corr: 0.8231812549453853
+beta max 0.09
+Subject: 18
+idx 4
+max corr: 0.8075419364539765
+beta max 0.08
+Subject: 19
+idx 8
+max corr: 0.8292285874255585
+beta max 0.12
+Subject: 20
+idx 4
+max corr: 0.8031981507572915
+beta max 0.08
+Subject: 21
+idx 5
+max corr: 0.8250962694903727
+beta max 0.09
+Subject: 22
+idx 7
+max corr: 0.8221212375615767
+beta max 0.11
+Subject: 23
+idx 8
+max corr: 0.8150023576423031
+beta max 0.12
+Subject: 24
+idx 7
+max corr: 0.8238686386399146
+beta max 0.11
+Subject: 25
+idx 6
+max corr: 0.8094229786814158
+beta max 0.1
+Subject: 26
+idx 5
+max corr: 0.8233364860099399
+beta max 0.09
+Subject: 27
+idx 4
+max corr: 0.8224713737813112
+beta max 0.08
+Subject: 28
+idx 3
+max corr: 0.7997614529737849
+beta max 0.08
+Subject: 29
+idx 5
+max corr: 0.8268027833549818
+beta max 0.09
+Subject: 30
+idx 7
+max corr: 0.833349361599723
+beta max 0.11
+Subject: 31
+idx 3
+max corr: 0.8207952870384361
+beta max 0.08
+Subject: 32
+idx 2
+max corr: 0.8075332432302634
+beta max 0.07
+Subject: 33
+idx 20
+max corr: 0.8088572090469064
+beta max 0.22
+Subject: 34
+idx 11
+max corr: 0.8294039097693947
+beta max 0.14
+Subject: 35
+idx 5
+max corr: 0.7996852672277381
+beta max 0.09
+Subject: 36
+idx 2
+max corr: 0.8231399221848383
+beta max 0.07
+Subject: 37
+idx 2
+max corr: 0.8239788122710682
+beta max 0.07
+Subject: 38
+idx 11
+max corr: 0.8006991085920229
+beta max 0.14
+Subject: 39
+idx 7
+max corr: 0.8102341463035592
+beta max 0.11
+Subject: 40
+idx 8
+max corr: 0.7983149437919396
+beta max 0.12
+Subject: 41
+idx 3
+max corr: 0.8234534426044929
+beta max 0.08
+Subject: 42
+idx 17
+max corr: 0.8144949290224937
+beta max 0.19
+Subject: 43
+idx 9
+max corr: 0.8237309385809054
+beta max 0.12
+Subject: 44
+idx 2
+max corr: 0.8091826972382054
+beta max 0.07
+Subject: 45
+idx 3
+max corr: 0.8063933962293296
+beta max 0.08
+Subject: 46
+idx 5
+max corr: 0.7963954830617426
+beta max 0.09
+Subject: 47
+idx 2
+max corr: 0.8244204063417853
+beta max 0.07
+Subject: 48
+idx 6
+max corr: 0.79735571173342
+beta max 0.1
+Subject: 49
+idx 7
+max corr: 0.8057737321050553
+beta max 0.11
+Subject: 50
+idx 7
+max corr: 0.7999492175826989
+beta max 0.11
+Subject: 51
+idx 5
+max corr: 0.7980322265488334
+beta max 0.09
+Subject: 52
+idx 3
+max corr: 0.8181710757609318
+beta max 0.08
+Subject: 53
+idx 4
+max corr: 0.8146708509808637
+beta max 0.08
+Subject: 54
+idx 4
+max corr: 0.8109157814792546
+beta max 0.08
+Subject: 55
+idx 6
+max corr: 0.8063511316276513
+beta max 0.1
+Subject: 56
+idx 1
+max corr: 0.8016781418204978
+beta max 0.06
+Subject: 57
+idx 3
+max corr: 0.8127987519193957
+beta max 0.08
+Subject: 58
+idx 6
+max corr: 0.8177814816291817
+beta max 0.1
+Subject: 59
+idx 6
+max corr: 0.8249010749561057
+beta max 0.1
+Subject: 60
+idx 7
+max corr: 0.8173621026098814
+beta max 0.11
+Subject: 61
+idx 8
+max corr: 0.8164367749235641
+beta max 0.12
+Subject: 62
+idx 4
+max corr: 0.8200313826066543
+beta max 0.08
+Subject: 63
+idx 7
+max corr: 0.803386156591745
+beta max 0.11
+Subject: 64
+idx 9
+max corr: 0.8245040846050161
+beta max 0.12
+Subject: 65
+idx 4
+max corr: 0.8301999366600066
+beta max 0.08
+Subject: 66
+idx 1
+max corr: 0.8198191511841249
+beta max 0.06
+Subject: 67
+idx 1
+max corr: 0.7987956009368798
+beta max 0.06
+Subject: 68
+idx 13
+max corr: 0.8326926855455339
+beta max 0.16
+Subject: 69
+idx 6
+max corr: 0.789034489701005
+beta max 0.1
+Subject: 70
+idx 10
+max corr: 0.805579838258321
+beta max 0.13
+Subject: 71
+idx 11
+max corr: 0.8313443175194266
+beta max 0.14
+Subject: 72
+idx 3
+max corr: 0.8356100904490728
+beta max 0.08
+Subject: 73
+idx 11
+max corr: 0.814402944252317
+beta max 0.14
+Subject: 74
+idx 3
+max corr: 0.8075678386499472
+beta max 0.08
+Subject: 75
+idx 4
+max corr: 0.8011358224702974
+beta max 0.08
+Subject: 76
+idx 12
+max corr: 0.8048626469800831
+beta max 0.15
+Subject: 77
+idx 8
+max corr: 0.8182651928947487
+beta max 0.12
+Subject: 78
+idx 13
+max corr: 0.8305290207615699
+beta max 0.16
+Subject: 79
+idx 21
+max corr: 0.8062254928030599
+beta max 0.22
+Subject: 80
+idx 5
+max corr: 0.801855096974621
+beta max 0.09
+Subject: 81
+idx 7
+max corr: 0.7944023691313908
+beta max 0.11
+Subject: 82
+idx 6
+max corr: 0.8149558750590262
+beta max 0.1
+Subject: 83
+idx 3
+max corr: 0.8172467632317846
+beta max 0.08
+Subject: 84
+idx 9
+max corr: 0.8139864567662283
+beta max 0.12
+Subject: 85
+idx 6
+max corr: 0.8231595197199605
+beta max 0.1
+Subject: 86
+idx 7
+max corr: 0.831142502476224
+beta max 0.11
+Subject: 87
+idx 4
+max corr: 0.81198629143493
+beta max 0.08
+Subject: 88
+idx 2
+max corr: 0.8144927970525526
+beta max 0.07
+Subject: 89
+idx 4
+max corr: 0.7934597729433657
+beta max 0.08
+Subject: 90
+idx 5
+max corr: 0.8058133039489794
+beta max 0.09
+Subject: 91
+idx 1
+max corr: 0.8002293451814753
+beta max 0.06
+Subject: 92
+idx 2
+max corr: 0.8423881381127108
+beta max 0.07
+Subject: 93
+idx 11
+max corr: 0.8157712010982892
+beta max 0.14
+Subject: 94
+idx 9
+max corr: 0.8282197499727296
+beta max 0.12
+Subject: 95
+idx 6
+max corr: 0.81754065493105
+beta max 0.1
+Subject: 96
+idx 7
+max corr: 0.8284842388845102
+beta max 0.11
+Subject: 97
+idx 9
+max corr: 0.8435471541816225
+beta max 0.12
+Subject: 98
+idx 5
+max corr: 0.811549636433862
+beta max 0.09
+Subject: 99
+idx 11
+max corr: 0.8247879384372352
+beta max 0.14
+Subject: 100
+idx 4
+max corr: 0.8048368220904049
+beta max 0.08
+Subject: 101
+idx 8
+max corr: 0.7998813085660947
+beta max 0.12
+Subject: 102
+idx 2
+max corr: 0.8126161010354119
+beta max 0.07
+Subject: 103
+idx 6
+max corr: 0.7997353322629861
+beta max 0.1
+Subject: 104
+idx 10
+max corr: 0.8159004636573266
+beta max 0.13
+Subject: 105
+idx 8
+max corr: 0.817462437571519
+beta max 0.12
+Subject: 106
+idx 6
+max corr: 0.815092663126948
+beta max 0.1
+Subject: 107
+idx 21
+max corr: 0.8123801781046502
+beta max 0.22
+Subject: 108
+idx 2
+max corr: 0.8456027335237666
+beta max 0.07
+Subject: 109
+idx 6
+max corr: 0.8059082405320487
+beta max 0.1
+Subject: 110
+idx 17
+max corr: 0.845353268307008
+beta max 0.19
+Subject: 111
+idx 7
+max corr: 0.8281865843824117
+beta max 0.11
+Subject: 112
+idx 5
+max corr: 0.8304672579864002
+beta max 0.09
+Subject: 113
+idx 5
+max corr: 0.8299195571325994
+beta max 0.09
+Subject: 114
+idx 0
+max corr: 0.8166602612890077
+beta max 0.05
+Subject: 115
+idx 2
+max corr: 0.8180005168347053
+beta max 0.07
+Subject: 116
+idx 5
+max corr: 0.8276192535017561
+beta max 0.09
+Subject: 117
+idx 13
+max corr: 0.8118401579690386
+beta max 0.16
+Subject: 118
+idx 5
+max corr: 0.8371028806157014
+beta max 0.09
+Subject: 119
+idx 7
+max corr: 0.8162765220390995
+beta max 0.11
+Subject: 120
+idx 8
+max corr: 0.7960272767948793
+beta max 0.12
+Subject: 121
+idx 5
+max corr: 0.807814363645911
+beta max 0.09
+Subject: 122
+idx 15
+max corr: 0.8357424682110007
+beta max 0.18
+Subject: 123
+idx 8
+max corr: 0.8250542821262428
+beta max 0.12
+Subject: 124
+idx 11
+max corr: 0.807182590332267
+beta max 0.14
+Subject: 125
+idx 6
+max corr: 0.8214445209293804
+beta max 0.1
+Subject: 126
+idx 7
+max corr: 0.8050074538959249
+beta max 0.11
+Subject: 127
+idx 5
+max corr: 0.801780474571624
+beta max 0.09
+Subject: 128
+idx 5
+max corr: 0.8031958447658905
+beta max 0.09
+Subject: 129
+idx 6
+max corr: 0.8212265468795057
+beta max 0.1
+Subject: 130
+idx 8
+max corr: 0.8028249022981235
+beta max 0.12
+Subject: 131
+idx 6
+max corr: 0.8037712493211318
+beta max 0.1
+Subject: 132
+idx 7
+max corr: 0.8074578906633869
+beta max 0.11
+Subject: 133
+idx 11
+max corr: 0.8019485380159403
+beta max 0.14
+Subject: 134
+idx 3
+max corr: 0.8383397122081833
+beta max 0.08
+Subject: 135
+idx 2
+max corr: 0.8263691577933703
+beta max 0.07
+Subject: 136
+idx 12
+max corr: 0.8137629244407181
+beta max 0.15
+Subject: 137
+idx 7
+max corr: 0.8086301406618244
+beta max 0.11
+Subject: 138
+idx 4
+max corr: 0.8088679820799601
+beta max 0.08
+Subject: 139
+idx 11
+max corr: 0.804659234883282
+beta max 0.14
+Subject: 140
+idx 5
+max corr: 0.8243897196567485
+beta max 0.09
+Subject: 141
+idx 9
+max corr: 0.8096414067969888
+beta max 0.12
+Subject: 142
+idx 3
+max corr: 0.8159998253426899
+beta max 0.08
+Subject: 143
+idx 11
+max corr: 0.8103617479901517
+beta max 0.14
+Subject: 144
+idx 0
+max corr: 0.8088823664747317
+beta max 0.05
+Subject: 145
+idx 3
+max corr: 0.818262469439462
+beta max 0.08
+Subject: 146
+idx 2
+max corr: 0.8175753333900019
+beta max 0.07
+Subject: 147
+idx 5
+max corr: 0.7976064782740987
+beta max 0.09
+Subject: 148
+idx 13
+max corr: 0.8146499156612418
+beta max 0.16
+Subject: 149
+idx 5
+max corr: 0.8042073393361043
+beta max 0.09
+Subject: 150
+idx 23
+max corr: 0.816927892424791
+beta max 0.24
+Subject: 151
+idx 2
+max corr: 0.7996800424117865
+beta max 0.07
+Subject: 152
+idx 4
+max corr: 0.8111517010665938
+beta max 0.08
+Subject: 153
+idx 1
+max corr: 0.81315009729626
+beta max 0.06
+Subject: 154
+idx 6
+max corr: 0.8182450462569273
+beta max 0.1
+Subject: 155
+idx 9
+max corr: 0.8026917261852493
+beta max 0.12
+Subject: 156
+idx 7
+max corr: 0.856505469005364
+beta max 0.11
+Subject: 157
+idx 2
+max corr: 0.8367797066712541
+beta max 0.07
+Subject: 158
+idx 2
+max corr: 0.8323173874581882
+beta max 0.07
+Subject: 159
+idx 10
+max corr: 0.8092025601668441
+beta max 0.13
+Subject: 160
+idx 5
+max corr: 0.8387604754629671
+beta max 0.09
+Subject: 161
+idx 8
+max corr: 0.8407770242455997
+beta max 0.12
+Subject: 162
+idx 6
+max corr: 0.8241183465159105
+beta max 0.1
+Subject: 163
+idx 18
+max corr: 0.8183474303789406
+beta max 0.2
+Subject: 164
+idx 12
+max corr: 0.8292346520882484
+beta max 0.15
+Subject: 165
+idx 2
+max corr: 0.7885206304426751
+beta max 0.07
+Subject: 166
+idx 7
+max corr: 0.8302503170020458
+beta max 0.11
+ising shape: (6786,)
+sfc shape: (6786,)
+fc and j corr:
+0.6657006868996321
+0.6617336143629436
+0.6792097050570127
+0.6321002788775378
+0.6672448801748069
+0.5394471761663232
+0.5964349919983813
+0.587032474340457
+0.6461461802635572
+0.6621192007087631
+0.7075173840742512
+0.7023312632157017
+0.6578366225690099
+0.6263646934199305
+0.6094130409963173
+0.6607954315122792
+0.6621056795656944
+0.6428241184680992
+0.711715564167182
+0.6370679705999057
+0.7211308222904566
+0.6175269729813967
+0.6523249300986952
+0.600760700418728
+0.6410272790391797
+0.7033117078567646
+0.6599348167420035
+0.6922033583098708
+0.6961506935123882
+0.6664217323002435
+0.61745248063455
+0.6377507240408797
+0.6522522298098895
+0.5758241785727624
+0.6068991705326876
+0.6328552403638439
+0.6343251643157545
+0.6828083429982569
+0.6148673936604279
+0.6645157896536139
+0.5712755109208907
+0.6756726315341407
+0.6010228488839681
+0.6056531217907006
+0.6871473856649871
+0.7051367485936194
+0.6969945299133046
+0.6731570630965471
+0.6655576185050317
+0.6504158181571047
+0.6814166393390663
+0.6777383870757052
+0.6589441921367877
+0.6667815062559246
+0.6837384290062996
+0.6893623164358925
+0.7400873186901344
+0.6585436102070031
+0.6302704434550033
+0.6615145329223926
+0.673824251283284
+0.6382693120217711
+0.6424522861210521
+0.6682741637820112
+0.6367840251322794
+0.6350165990603364
+0.676703030776898
+0.6769872166858706
+0.5885968282391127
+0.6922946368590643
+0.6578872683812346
+0.615765896124144
+0.6349632250848788
+0.6436625031850662
+0.7143197130483662
+0.6770829457936749
+0.652905684922005
+0.6122824002335729
+0.587299792743561
+0.6278496153037111
+0.7066844918650914
+0.630453961970561
+0.6171412675117566
+0.6781077207754748
+0.6416435777337992
+0.6752663244038252
+0.6487907477706487
+0.6907620453688643
+0.6639425583153789
+0.7301071540661536
+0.7102925359818845
+0.7281194753492396
+0.6294450751030736
+0.6004833281359918
+0.6252379387052909
+0.6633252943478675
+0.6335026256334554
+0.5896545764401042
+0.6614375626153016
+0.6315700798370273
+0.7042559731637132
+0.6512857536301218
+0.6689215136447101
+0.6873028969434252
+0.6276800937332656
+0.6228785061146326
+0.6524718831562748
+0.5213086660235752
+0.6295379796637123
+0.7071835493211667
+0.5784056237930172
+0.6364431982912557
+0.6380129529352392
+0.6700544698683238
+0.6907924106135815
+0.6762581792107208
+0.6478350502992927
+0.6138700100144272
+0.6137858624723275
+0.6743334064286042
+0.7071688212862087
+0.6768373156112083
+0.5904516939955328
+0.6372376585121529
+0.6395752125738887
+0.6367405741131351
+0.6510466221245473
+0.6831349370640466
+0.7239916932664289
+0.6594932902288139
+0.6848382237551277
+0.6687822744896286
+0.6796743251318044
+0.6539884146964151
+0.6735979054479835
+0.6448224517912122
+0.6308783212317001
+0.6920371870621587
+0.666468998200036
+0.6526785717275397
+0.637297146225005
+0.6818575358697563
+0.6686907205511871
+0.6453931483144476
+0.7270210213072302
+0.6832793027653579
+0.6892422475110354
+0.7072906774059553
+0.6445782433107519
+0.6328853395822066
+0.5772706481183064
+0.7103494982671029
+0.6032673087406497
+0.6746985915572464
+0.6456345794346235
+0.6800174086510379
+0.5814187067306656
+0.6092406663251382
+0.6553386486928099
+0.6290927378676566
+0.6239160087214756
+0.6245258700561072
+0.6646696075063588
+0.6234116333626254
+0.6009006975044668
+0.7005394125173093
+0.6405766573572427
