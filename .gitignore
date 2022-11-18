@@ -1,1 +1,5 @@
 data/**
+**/.ipynb_checkpoints
+**/nilearn_cache
+**/*.pyc
+**/slurm-*
