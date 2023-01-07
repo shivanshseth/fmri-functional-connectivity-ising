@@ -16,6 +16,10 @@ from sklearn.metrics import confusion_matrix, accuracy_score, mean_squared_error
 from joblib import Parallel, delayed
 from ising_simulation import IsingSimulation
 
+FUNC_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset/fc"
+META_FP = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset/metadata.csv"
+TIMESERIES_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset/timeseries"
+
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
     if pad_size <= 0:
@@ -31,12 +35,12 @@ class Abide():
     
     def __init__(
                     self, 
-                    func_files_dir = '../../data/raw', 
-                    meta_file = '../../metadata.csv', 
+                    func_files_dir = FUNC_DIR, 
+                    meta_file = META_FP, 
+                    timeseries_dir = TIMESERIES_DIR,
                     sites = 'all', 
-                    labels = 'aut',
+                    labels = [ 'age', 'sex', 'aut' ],
                     pre_parcellated = True,
-                    timeseries_dir = '../../data/',
                     scale='AAL',
                     atlas='AAL'
                 ):
@@ -55,6 +59,11 @@ class Abide():
             self.meta_data = pd.read_csv(meta_file)
             self.scale = scale
             self.atlas = atlas
+            self.sFC_result = None
+            self.timeseries_result = None
+
+            self.sFC()
+            self.get_timeseries()
             return 
 
         try:
@@ -168,10 +177,10 @@ class Abide():
         Js = list(Js)
         max_idx = np.argmax(corrs)
         corrs = list(corrs)
-        print('idx', max_idx)
-        print('max corr:', corrs[max_idx])
+        # print('idx', max_idx)
+        # print('max corr:', corrs[max_idx])
         beta_max = self.beta_range[max_idx]
-        print('beta max', beta_max)
+        # print('beta max', beta_max)
         J_max = Js[max_idx]
         J_corr = np.corrcoef(sfc, J_max[np.triu_indices(self.n_rois)].flatten())[0][1]
         print('J corr', J_corr)
@@ -193,6 +202,9 @@ class Abide():
         return res
 
     def get_timeseries(self): 
+        if self.timeseries_result:
+            return self.timeseries_result
+
         excluded_subjects = pd.DataFrame(columns=self.meta_data.columns)
         if not self.pre_parcellated:
             self.parcellate()
@@ -206,13 +218,20 @@ class Abide():
         subject_ids = self.meta_data['SUB_ID']
         timeseries = []
         t_max = 0
-        for f in self.func:
-            try:
-                subject_id = int(f[f.find('5'):].split('_')[0])
-            except:
-                print(f)
-                subject_id = 'x'
-                assert False, "remove above file from atlas folder"
+        # For ABIDE
+        for i_file in range(len(self.func)):
+            f = self.func[i_file]
+            # Uncomment for ABIDE
+                # try:
+                #     subject_id = int(f[f.find('5'):].split('_')[0])
+                # except:
+                #     print(f)
+                #     subject_id = 'x'
+                #     assert False, "remove above file from atlas folder"
+            # Use for mica-mics
+            subject_id = f.split("_")[0]
+
+            # print(f"subject id: {subject_id}")
             this_pheno = self.meta_data[self.meta_data['SUB_ID'] == subject_id]
             this_timeseries = join(self.timeseries_dir, atlas, f)
             if not os.path.exists(this_timeseries):
@@ -237,9 +256,14 @@ class Abide():
         excluded_subjects.to_csv(join('../../data/excluded', atlas.replace('/', '-') +'.csv'))    
         self.n_timesteps = timeseries.shape[1]
         self.n_rois = timeseries.shape[2]
+
+        self.timeseries_result = (timeseries, IDs_subject, diagnosis, age, sex)
         return timeseries, IDs_subject, diagnosis, age, sex
     
     def sFC(self):
+        if self.sFC_result:
+            return self.sFC_result
+
         data, ID, diag, age, sex = self.get_timeseries()
         #correlation_measure = ConnectivityMeasure(kind='correlation', vectorize=True)
         #correlation_matrices = correlation_measure.fit_transform(data)
@@ -249,6 +273,8 @@ class Abide():
             c = c[np.triu_indices(self.n_rois)].flatten()
             corr.append(c)
         corr = np.array(corr)
+
+        self.sFC_result = (corr, ID, diag, age, sex)
         return corr, ID, diag, age, sex
     
     def ising_optimize_cg(self, bold, beta, J): 
@@ -302,8 +328,7 @@ class Abide():
             corrs = np.zeros(len(data))
             print(f'Ising coupling: length of data = {len(data)}')
             for idx, i in enumerate(data):
-                print(f'Subject: {ID[idx]}')
-                print(i.shape)
+                print(f'Subject: {ID[idx]}, shape: {i.shape}')
                 J, b, c = self.beta_optimization_wrapper(i, sfc=sfc[idx])
                 reps[idx] = J
                 betas[idx] = b
@@ -312,21 +337,15 @@ class Abide():
         
 
 if __name__ == '__main__':
-    atlas = 'AAL'
-    dataset = Abide(sites='NYU', atlas=atlas, scale=atlas)
-    sites = dataset.meta_data['SITE_ID'].unique()
+    atlas = ''
     all_ising = None
     all_sfc = None 
     all_diag = None
     all_betas = None
-    sites = list(sites)
-    #sites.remove('NYU')
-    sites = ['NYU']
-    print(sites)
+    sites = 'all'
     n_rois = 116
     for site in sites:
-        print(site)
-        dataset = Abide(sites=site, atlas=atlas, scale=atlas)
+        dataset = Abide(sites=sites, atlas=atlas, scale=atlas)
         betas = []
         diag = []
         corr = []
@@ -334,6 +353,7 @@ if __name__ == '__main__':
         J_corr = []
         sfc, sub, diag, age, sex = dataset.sFC()
         ising, betas, corr, sub1, diag1, age1, sex1 = dataset.ising_coupling()
+
         print('ising shape:', ising[0][np.triu_indices(n_rois)].flatten().shape)
         print('sfc shape:', sfc[0].flatten().shape)
         print('fc and j corr:')
@@ -343,12 +363,14 @@ if __name__ == '__main__':
             print(k)
         J_corr = np.array(J_corr)
         assert np.array_equal(sub, sub1)
-        np.save(f'../../data/{atlas}_reps/diag_{site}.npy', diag)
-        np.save(f'../../data/{atlas}_reps/sfc_{site}.npy', sfc)
-        np.save(f'../../data/{atlas}_reps/ising_{site}.npy', ising)
-        np.save(f'../../data/{atlas}_reps/betas_{site}.npy', betas)
-        np.save(f'../../data/{atlas}_reps/corr_{site}.npy', corr)
-        np.save(f'../../data/{atlas}_reps/J_corr_{site}.npy', J_corr)
+
+        np.save(f'../../data/{atlas}_reps/NEW_diag_{site}.npy', diag)
+        np.save(f'../../data/{atlas}_reps/NEW_sfc_{site}.npy', sfc)
+        np.save(f'../../data/{atlas}_reps/NEW_ising_{site}.npy', ising)
+        np.save(f'../../data/{atlas}_reps/NEW_betas_{site}.npy', betas)
+        np.save(f'../../data/{atlas}_reps/NEW_corr_{site}.npy', corr)
+        np.save(f'../../data/{atlas}_reps/NEW_J_corr_{site}.npy', J_corr)
+
         if all_sfc is not None:
             all_ising = np.vstack((all_ising, ising))
             all_sfc = np.vstack((all_sfc, sfc))
