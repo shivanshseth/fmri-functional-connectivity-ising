@@ -3,3 +3,4 @@ data/**
 **/nilearn_cache
 **/*.pyc
 **/slurm-*
+**/__pycache__
