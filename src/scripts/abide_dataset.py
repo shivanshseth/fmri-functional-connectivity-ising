@@ -106,11 +106,14 @@ class Abide():
         J = np.reshape(J, (self.n_rois, self.n_rois))
         term1 = 0
         term2 = 0
+        term3 = 0
         for t in range(self.n_timesteps):
             C = beta * J @ s[t].T
             term1 += C @ s[t].T
             term2 -= np.sum(np.log(np.exp(C) + np.exp(-C)))
-        return -(term1+term2)/self.n_timesteps
+            # term3 for including structural connectivity
+            # term3 = 
+        return -(term1+term2+term3)/self.n_timesteps
 
     def __gradient(self, J, s, beta):
         J = np.reshape(J, (self.n_rois, self.n_rois))
