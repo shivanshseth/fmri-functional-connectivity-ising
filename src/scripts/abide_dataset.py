@@ -17,9 +17,11 @@ from sklearn.metrics import confusion_matrix, accuracy_score, mean_squared_error
 from joblib import Parallel, delayed
 from ising_simulation import IsingSimulation
 
-FUNC_DIR = "/home/anirudh.palutla/Brain/Datasets/mica-mics-dataset/timeseries"
-META_FP = "/home/anirudh.palutla/Brain/Datasets/mica-mics-dataset/metadata.csv"
-TIMESERIES_DIR = "/home/anirudh.palutla/Brain/Datasets/mica-mics-dataset/timeseries"
+BASE_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset/"
+FUNC_DIR = os.path.join(BASE_DIR, "timeseries")
+META_FP = os.path.join(BASE_DIR, "metadata.csv")
+TIMESERIES_DIR = os.path.join(BASE_DIR, "timeseries")
+STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -39,16 +41,20 @@ class Abide():
                     func_files_dir = FUNC_DIR, 
                     meta_file = META_FP, 
                     timeseries_dir = TIMESERIES_DIR,
+                    struct_conn_dir = STRUCT_CONN_DIR,
                     sites = 'all', 
                     labels = [ 'age', 'sex', 'aut' ],
                     pre_parcellated = True,
                     scale='AAL',
-                    atlas='AAL'
+                    atlas='AAL',
+                    lambda_ = 1e-10
                 ):
 
         self.pre_parcellated = pre_parcellated
+        self.lambda_ = lambda_
         if pre_parcellated: 
             self.timeseries_dir = timeseries_dir 
+            self.struct_conn_dir = struct_conn_dir
             self.sites = sites
             filtered_func_files = []
             self.age_labels = []
@@ -62,9 +68,11 @@ class Abide():
             self.atlas = atlas
             self.sFC_result = None
             self.timeseries_result = None
+            self.SC_data = None
 
-            self.sFC()
             self.get_timeseries()
+            self.SC()
+            self.sFC()
             return 
 
         try:
@@ -103,7 +111,7 @@ class Abide():
         self.atlas = atlas
         self.func = filtered_func_files 
 
-    def __loss(self, J, s, beta):
+    def __loss(self, J, s, beta, sc=None):
         J = np.reshape(J, (self.n_rois, self.n_rois))
         term1 = 0
         term2 = 0
@@ -112,16 +120,28 @@ class Abide():
             C = beta * J @ s[t].T
             term1 += C @ s[t].T
             term2 -= np.sum(np.log(np.exp(C) + np.exp(-C)))
+
             # term3 for including structural connectivity
-            # term3 = 
+            if type(sc) != type(None):
+                diff_arr = np.power(J - np.dot(np.sign(J), sc), 2)
+                total_diff_arr = (np.sum(diff_arr) - np.sum(diff_arr.diagonal())) / 2
+                term3 -= 0.5 * self.lambda_ * total_diff_arr
+
+        # print(f"C: {C.shape}, J: {J.shape}, s: {s.shape}, "  \
+        #     + f"term1: {term1.shape}, term2: {term2.shape}")
         return -(term1+term2+term3)/self.n_timesteps
 
-    def __gradient(self, J, s, beta):
+    def __gradient(self, J, s, beta, sc=None):
         J = np.reshape(J, (self.n_rois, self.n_rois))
         grad = np.zeros((self.n_rois, self.n_rois))
         for t in range(self.n_timesteps):
             C = beta * J @ s[t].T
             grad += np.outer(s[t], s[t].T) - np.outer(np.tanh(C).T, s[t])
+
+            # For structural connectivity inclusion
+            if type(sc) != type(None):
+                grad -= self.lambda_ * (J - np.dot(np.sign(J), sc))
+            
         grad = grad * beta/self.n_timesteps
         return -grad.flatten()
 
@@ -131,20 +151,21 @@ class Abide():
                         learning_rate=0.05,momentum=0.8, threshold=0.001, disp=False):
         
         w = w_init
+        bold_bin, beta, sc = extra_param
         w_history = [w]
-        f_history = [obj_func(w,*extra_param)]
+        f_history = [obj_func(w, bold_bin, beta, sc)]
         delta_w = np.zeros(w.shape)
         i = 0
         diff = 1.0e10
         
         while i<max_iterations and diff > threshold:
-            grad = grad_func(w,*extra_param)
+            grad = grad_func(w, bold_bin, beta, sc)
             # print("from func", grad.shape)
             grad = np.reshape(grad, (self.n_rois, self.n_rois))
             # print(grad.shape)
             delta_w = -learning_rate*grad
             w = w+delta_w
-            f_history.append(obj_func(w,*extra_param))
+            f_history.append(obj_func(w, bold_bin, beta, sc))
             w_history.append(w)
             if i%10 == 0 and disp: 
                 print(f"iteration: {i} loss: {f_history[-1]} grad: {np.sum(grad)}")
@@ -153,14 +174,17 @@ class Abide():
         w_max = w_history[f_history.index(min(f_history))]
         return w_max.flatten()
 
-    def beta_optimization(self, bold, bold_bin, beta, sfc, n_folds = 5):
+    def beta_optimization(self, bold, bold_bin, beta, sfc, sc=None, n_folds = 5):
+        print(f"Optimizing for beta = {beta}")
         J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
         J = (J + J.T)/2 # making it symmetric
         np.fill_diagonal(J, 0)
         #fc = 1/self.n_timesteps * bold.T @ bold
         fc = sfc 
         # J_max = optimize.fmin_cg(loss, x0=J.flatten(), fprime=gradient, args=(bold, beta))
-        J_max = self.gradient_descent(self.iterations, J, self.__loss, self.__gradient, extra_param=(bold_bin, beta) , learning_rate=self.alpha, threshold=0.005, disp=False)
+        J_max = self.gradient_descent(self.iterations, J, self.__loss, 
+            self.__gradient, extra_param=(bold_bin, beta, sc) , 
+            learning_rate=self.alpha, threshold=0.005, disp=False)
         J_max = np.reshape(J_max, (self.n_rois, self.n_rois))
         sim = IsingSimulation(self.n_rois, beta, coupling_mat = True, J=J_max)
         for i in range(self.eq_steps):
@@ -171,14 +195,14 @@ class Abide():
             corr += np.corrcoef(fc, sim_fc[np.triu_indices(self.n_rois)].flatten())[0][1]
         return J_max, corr/n_folds
     
-    def beta_optimization_wrapper(self, bold, sfc):
+    def beta_optimization_wrapper(self, bold, sfc, sc=None):
         bold_bin = np.copy(bold)
         bold_bin[np.where(bold_bin >= 0)] = 1
         bold_bin[np.where(bold_bin < 0)] = -1
         #print('beta range', self.beta_range)
-        results = Parallel(n_jobs=5)(delayed(self.beta_optimization)(bold, bold_bin, i, sfc) for i in self.beta_range)
-        with open("./results-pkl.pkl", "wb") as f:
-            pkl.dump(results, f)
+        results = Parallel(n_jobs=5)(delayed(self.beta_optimization)(bold, bold_bin, i, sfc, sc) for i in self.beta_range)
+        # with open("./results-pkl.pkl", "wb") as f:
+        #     pkl.dump(results, f)
         # print("results:")
         # print(results)
         Js, corrs = np.array(results).T
@@ -267,6 +291,25 @@ class Abide():
 
         self.timeseries_result = (timeseries, IDs_subject, diagnosis, age, sex)
         return timeseries, IDs_subject, diagnosis, age, sex
+
+    def SC(self):
+        if self.SC_data:
+            return self.SC_data
+
+        _, ID, _, _, _ = self.get_timeseries()
+        if not os.path.exists(self.struct_conn_dir):
+            self.SC_data = [ None ] * len(ID)
+            return self.SC_data
+
+        sc_data = []
+        for i in ID:
+            fp = os.path.join(self.struct_conn_dir, i + "_sc.txt")
+            w = np.loadtxt(fp)
+            sc_data.append(w)
+            # print(f"{i}: {fp}", flush=True)
+        self.SC_data = sc_data
+
+        return self.SC_data
     
     def sFC(self):
         if self.sFC_result:
@@ -286,11 +329,14 @@ class Abide():
         return corr, ID, diag, age, sex
     
     def ising_optimize_cg(self, bold, beta, J): 
-        J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), fprime=self.__gradient, args=(bold, beta), disp=False)
+        J_max = optimize.fmin_cg(self.__loss, x0=J.flatten(), \
+            fprime=self.__gradient, args=(bold, beta), disp=False)
         return J_max
     
     def ising_optimize_gd(self, bold, beta, J): 
-        J_max = self.gradient_descent(self.iterations, J, self.__loss, self.__gradient, extra_param=(bold, beta) , learning_rate=self.alpha, threshold=0.005, disp=False)
+        J_max = self.gradient_descent(self.iterations, J, self.__loss, \
+            self.__gradient, extra_param=(bold, beta) , \
+            learning_rate=self.alpha, threshold=0.005, disp=False)
         J_max = J_max.reshape(self.n_rois, self.n_rois)
         #if not np.all(np.abs(J_max-J_max.T) < 1e-8):
             #print('not symmetric')
@@ -303,7 +349,7 @@ class Abide():
                     method = "GD", 
                     iterations=500, 
                     alpha=2, 
-                    beta_range=np.linspace(0.01, 0.105, 20), 
+                    beta_range=np.linspace(0.01, 0.105, 5), 
                     sim_timesteps = 300,
                     beta = False, 
                     eq_timesteps=50
@@ -318,6 +364,7 @@ class Abide():
         self.beta_range = [round(i, 2) for i in beta_range]
         data, ID, diag, age, sex = self.get_timeseries()
         sfc, ID, diag1, age, sex = self.sFC()
+        sc = self.SC()
         data_bin = np.copy(data)
         data_bin[np.where(data_bin >= 0)] = 1
         data_bin[np.where(data_bin < 0)] = -1
@@ -328,7 +375,7 @@ class Abide():
         betas = []
         diag = np.array(diag) - 1
         if beta:
-            #reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_gd)(i, beta, J) for i in data_bin)
+            reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_gd)(i, beta, J, sc) for i in data_bin)
             pass
         else: 
             reps = np.zeros((len(data), self.n_rois, self.n_rois))
@@ -337,7 +384,7 @@ class Abide():
             print(f'Ising coupling: length of data = {len(data)}')
             for idx, i in enumerate(data):
                 print(f'Subject: {ID[idx]}, shape: {i.shape}')
-                J, b, c = self.beta_optimization_wrapper(i, sfc=sfc[idx])
+                J, b, c = self.beta_optimization_wrapper(i, sfc=sfc[idx], sc=sc[idx])
                 reps[idx] = J
                 betas[idx] = b
                 corrs[idx] = c
@@ -350,8 +397,8 @@ if __name__ == '__main__':
     all_sfc = None 
     all_diag = None
     all_betas = None
-    sites = 'all'
-    n_rois = 116
+    sites = [ 'main' ]
+    n_rois = 86
     for site in sites:
         dataset = Abide(sites=sites, atlas=atlas, scale=atlas)
         betas = []
