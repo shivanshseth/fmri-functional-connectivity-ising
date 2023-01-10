@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import numpy as np
+import pickle as pkl
 from nilearn import datasets
 from nilearn import image
 from nilearn.input_data import NiftiLabelsMasker
@@ -16,9 +17,9 @@ from sklearn.metrics import confusion_matrix, accuracy_score, mean_squared_error
 from joblib import Parallel, delayed
 from ising_simulation import IsingSimulation
 
-FUNC_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset/fc"
-META_FP = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset/metadata.csv"
-TIMESERIES_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset/timeseries"
+FUNC_DIR = "/home/anirudh.palutla/Brain/Datasets/mica-mics-dataset/timeseries"
+META_FP = "/home/anirudh.palutla/Brain/Datasets/mica-mics-dataset/metadata.csv"
+TIMESERIES_DIR = "/home/anirudh.palutla/Brain/Datasets/mica-mics-dataset/timeseries"
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -172,7 +173,11 @@ class Abide():
         bold_bin[np.where(bold_bin >= 0)] = 1
         bold_bin[np.where(bold_bin < 0)] = -1
         #print('beta range', self.beta_range)
-        results = Parallel(n_jobs=20)(delayed(self.beta_optimization)(bold, bold_bin, i, sfc) for i in self.beta_range)
+        results = Parallel(n_jobs=5)(delayed(self.beta_optimization)(bold, bold_bin, i, sfc) for i in self.beta_range)
+        with open("./results-pkl.pkl", "wb") as f:
+            pkl.dump(results, f)
+        # print("results:")
+        # print(results)
         Js, corrs = np.array(results).T
         Js = list(Js)
         max_idx = np.argmax(corrs)
@@ -364,12 +369,12 @@ if __name__ == '__main__':
         J_corr = np.array(J_corr)
         assert np.array_equal(sub, sub1)
 
-        np.save(f'../../data/{atlas}_reps/NEW_diag_{site}.npy', diag)
-        np.save(f'../../data/{atlas}_reps/NEW_sfc_{site}.npy', sfc)
-        np.save(f'../../data/{atlas}_reps/NEW_ising_{site}.npy', ising)
-        np.save(f'../../data/{atlas}_reps/NEW_betas_{site}.npy', betas)
-        np.save(f'../../data/{atlas}_reps/NEW_corr_{site}.npy', corr)
-        np.save(f'../../data/{atlas}_reps/NEW_J_corr_{site}.npy', J_corr)
+        np.save(f'../../data/NEW_diag_{site}.npy', diag)
+        np.save(f'../../data/NEW_sfc_{site}.npy', sfc)
+        np.save(f'../../data/NEW_ising_{site}.npy', ising)
+        np.save(f'../../data/NEW_betas_{site}.npy', betas)
+        np.save(f'../../data/NEW_corr_{site}.npy', corr)
+        np.save(f'../../data/NEW_J_corr_{site}.npy', J_corr)
 
         if all_sfc is not None:
             all_ising = np.vstack((all_ising, ising))
