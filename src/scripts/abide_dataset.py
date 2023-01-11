@@ -21,7 +21,8 @@ BASE_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset/"
 FUNC_DIR = os.path.join(BASE_DIR, "timeseries")
 META_FP = os.path.join(BASE_DIR, "metadata.csv")
 TIMESERIES_DIR = os.path.join(BASE_DIR, "timeseries")
-STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
+# STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
+STRUCT_CONN_DIR = os.path.join(BASE_DIR, "NO")
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -205,7 +206,7 @@ class Abide():
         #     pkl.dump(results, f)
         # print("results:")
         # print(results)
-        Js, corrs = np.array(results).T
+        Js, corrs = np.array(results, dtype=object).T
         Js = list(Js)
         max_idx = np.argmax(corrs)
         corrs = list(corrs)
@@ -297,8 +298,10 @@ class Abide():
             return self.SC_data
 
         _, ID, _, _, _ = self.get_timeseries()
-        if not os.path.exists(self.struct_conn_dir):
+        if (type(self.struct_conn_dir) == type(None)) or \
+            (not os.path.exists(self.struct_conn_dir)):
             self.SC_data = [ None ] * len(ID)
+            print("Structural data not found or not included")
             return self.SC_data
 
         sc_data = []
@@ -349,7 +352,7 @@ class Abide():
                     method = "GD", 
                     iterations=500, 
                     alpha=2, 
-                    beta_range=np.linspace(0.01, 0.105, 5), 
+                    beta_range=np.linspace(0.01, 0.105, 2), 
                     sim_timesteps = 300,
                     beta = False, 
                     eq_timesteps=50
