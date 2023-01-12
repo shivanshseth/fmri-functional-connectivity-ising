@@ -154,6 +154,7 @@ class Abide():
         return w_max.flatten()
 
     def beta_optimization(self, bold, bold_bin, beta, sfc, n_folds = 5):
+        print(f"Optimizing for beta = {beta}", flush=True)
         J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
         J = (J + J.T)/2 # making it symmetric
         np.fill_diagonal(J, 0)
@@ -176,12 +177,12 @@ class Abide():
         bold_bin[np.where(bold_bin >= 0)] = 1
         bold_bin[np.where(bold_bin < 0)] = -1
         #print('beta range', self.beta_range)
-        results = Parallel(n_jobs=5)(delayed(self.beta_optimization)(bold, bold_bin, i, sfc) for i in self.beta_range)
+        results = Parallel(n_jobs=20)(delayed(self.beta_optimization)(bold, bold_bin, i, sfc) for i in self.beta_range)
         with open("./results-pkl.pkl", "wb") as f:
             pkl.dump(results, f)
         # print("results:")
         # print(results)
-        Js, corrs = np.array(results).T
+        Js, corrs = np.array(results, dtype=object).T
         Js = list(Js)
         max_idx = np.argmax(corrs)
         corrs = list(corrs)
@@ -242,6 +243,7 @@ class Abide():
             # print(f"subject id: {subject_id}")
             this_pheno = self.meta_data[self.meta_data['SUB_ID'] == subject_id]
             this_timeseries = join(self.timeseries_dir, atlas, f)
+            print(f"{i_file}: {this_timeseries}")
             if not os.path.exists(this_timeseries):
                 excluded_subjects.loc[len(excluded_subjects)] = this_pheno.values.flatten().tolist()
                 continue
@@ -303,10 +305,10 @@ class Abide():
                     method = "GD", 
                     iterations=500, 
                     alpha=2, 
-                    beta_range=np.linspace(0.01, 0.105, 20), 
+                    beta_range=np.linspace(0.01, 0.105, 10), 
                     sim_timesteps = 300,
                     beta = False, 
-                    eq_timesteps=50
+                    eq_timesteps=100
                     ):
         # setting parameters for GD
         self.eq_steps = eq_timesteps
@@ -334,9 +336,9 @@ class Abide():
             reps = np.zeros((len(data), self.n_rois, self.n_rois))
             betas = np.zeros(len(data))
             corrs = np.zeros(len(data))
-            print(f'Ising coupling: length of data = {len(data)}')
+            print(f'Ising coupling: length of data = {len(data)}\n')
             for idx, i in enumerate(data):
-                print(f'Subject: {ID[idx]}, shape: {i.shape}')
+                print(f'Subject: {ID[idx]}, shape: {i.shape}', flush=True)
                 J, b, c = self.beta_optimization_wrapper(i, sfc=sfc[idx])
                 reps[idx] = J
                 betas[idx] = b
@@ -350,8 +352,8 @@ if __name__ == '__main__':
     all_sfc = None 
     all_diag = None
     all_betas = None
-    sites = 'all'
-    n_rois = 116
+    sites = [ 'main' ]
+    n_rois = 86
     for site in sites:
         dataset = Abide(sites=sites, atlas=atlas, scale=atlas)
         betas = []
@@ -372,12 +374,12 @@ if __name__ == '__main__':
         J_corr = np.array(J_corr)
         assert np.array_equal(sub, sub1)
 
-        np.save(f'../../data/NEW_diag_{site}.npy', diag)
-        np.save(f'../../data/NEW_sfc_{site}.npy', sfc)
-        np.save(f'../../data/NEW_ising_{site}.npy', ising)
-        np.save(f'../../data/NEW_betas_{site}.npy', betas)
-        np.save(f'../../data/NEW_corr_{site}.npy', corr)
-        np.save(f'../../data/NEW_J_corr_{site}.npy', J_corr)
+        np.save(f'../../data/mica-mics/diag_{site}.npy', diag)
+        np.save(f'../../data/mica-mics/sfc_{site}.npy', sfc)
+        np.save(f'../../data/mica-mics/ising_{site}.npy', ising)
+        np.save(f'../../data/mica-mics/betas_{site}.npy', betas)
+        np.save(f'../../data/mica-mics/corr_{site}.npy', corr)
+        np.save(f'../../data/mica-mics/J_corr_{site}.npy', J_corr)
 
         if all_sfc is not None:
             all_ising = np.vstack((all_ising, ising))
