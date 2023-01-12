@@ -17,12 +17,12 @@ from sklearn.metrics import confusion_matrix, accuracy_score, mean_squared_error
 from joblib import Parallel, delayed
 from ising_simulation import IsingSimulation
 
-BASE_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset/"
+BASE_DIR = "/home/anirudh.palutla/Brain/Datasets/mica-mics-dataset-aparca2009s"
 FUNC_DIR = os.path.join(BASE_DIR, "timeseries")
 META_FP = os.path.join(BASE_DIR, "metadata.csv")
 TIMESERIES_DIR = os.path.join(BASE_DIR, "timeseries")
 # STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
-STRUCT_CONN_DIR = os.path.join(BASE_DIR, "NO")
+STRUCT_CONN_DIR = None
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -175,7 +175,7 @@ class Abide():
         w_max = w_history[f_history.index(min(f_history))]
         return w_max.flatten()
 
-    def beta_optimization(self, bold, bold_bin, beta, sfc, n_folds = 5):
+    def beta_optimization(self, bold, bold_bin, beta, sfc, sc, n_folds = 5):
         print(f"Optimizing for beta = {beta}", flush=True)
         J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
         J = (J + J.T)/2 # making it symmetric
@@ -351,12 +351,12 @@ class Abide():
     def ising_coupling(
                     self, 
                     method = "GD", 
-                    iterations=500, 
+                    iterations=1000, 
                     alpha=2, 
                     beta_range=np.linspace(0.01, 0.105, 10), 
-                    sim_timesteps = 300,
+                    sim_timesteps = 500,
                     beta = False, 
-                    eq_timesteps=100
+                    eq_timesteps=300
                     ):
         # setting parameters for GD
         self.eq_steps = eq_timesteps
@@ -386,9 +386,10 @@ class Abide():
             betas = np.zeros(len(data))
             corrs = np.zeros(len(data))
             print(f'Ising coupling: length of data = {len(data)}\n')
+            print(f'sc: {len(sc)}')
             for idx, i in enumerate(data):
                 print(f'Subject: {ID[idx]}, shape: {i.shape}', flush=True)
-                J, b, c = self.beta_optimization_wrapper(i, sfc=sfc[idx], sc=sc[idx])
+                J, b, c = self.beta_optimization_wrapper(i, sfc[idx], sc[idx])
                 reps[idx] = J
                 betas[idx] = b
                 corrs[idx] = c
@@ -402,7 +403,7 @@ if __name__ == '__main__':
     all_diag = None
     all_betas = None
     sites = [ 'main' ]
-    n_rois = 86
+    n_rois = 164
     for site in sites:
         dataset = Abide(sites=sites, atlas=atlas, scale=atlas)
         betas = []
@@ -413,6 +414,12 @@ if __name__ == '__main__':
         sfc, sub, diag, age, sex = dataset.sFC()
         ising, betas, corr, sub1, diag1, age1, sex1 = dataset.ising_coupling()
 
+        np.save(f'../../data/mica-mics/diag_{site}.npy', diag)
+        np.save(f'../../data/mica-mics/sfc_{site}.npy', sfc)
+        np.save(f'../../data/mica-mics/ising_{site}.npy', ising)
+        np.save(f'../../data/mica-mics/betas_{site}.npy', betas)
+        np.save(f'../../data/mica-mics/corr_{site}.npy', corr)
+
         print('ising shape:', ising[0][np.triu_indices(n_rois)].flatten().shape)
         print('sfc shape:', sfc[0].flatten().shape)
         print('fc and j corr:')
@@ -422,13 +429,8 @@ if __name__ == '__main__':
             print(k)
         J_corr = np.array(J_corr)
         assert np.array_equal(sub, sub1)
-
-        np.save(f'../../data/mica-mics/diag_{site}.npy', diag)
-        np.save(f'../../data/mica-mics/sfc_{site}.npy', sfc)
-        np.save(f'../../data/mica-mics/ising_{site}.npy', ising)
-        np.save(f'../../data/mica-mics/betas_{site}.npy', betas)
-        np.save(f'../../data/mica-mics/corr_{site}.npy', corr)
         np.save(f'../../data/mica-mics/J_corr_{site}.npy', J_corr)
+
 
         if all_sfc is not None:
             all_ising = np.vstack((all_ising, ising))
