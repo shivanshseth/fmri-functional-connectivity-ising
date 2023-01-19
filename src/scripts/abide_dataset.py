@@ -386,7 +386,6 @@ class Abide():
                     beta_range=np.linspace(0.01, 0.105, 10), 
                     lambda_range=np.linspace(1e-6, 1e-5, 10), 
                     sim_timesteps = 300,
-                    beta = False, 
                     eq_timesteps=100
                     ):
         # setting parameters for GD
@@ -410,36 +409,32 @@ class Abide():
         reps = []
         betas = []
         diag = np.array(diag) - 1
-        if beta:
-            # reps = Parallel(n_jobs=20)(delayed(self.ising_optimize_gd)(i, beta, J, sc) for i in data_bin)
-            pass
-        else: 
-            reps = np.zeros((len(data), self.n_rois, self.n_rois))
-            betas = np.zeros(len(data))
-            # if (type(sc) != type(None)) and (type(sc[0]) != type(None)):
-            if not is_none_array(sc):
-                lambdas = np.zeros(len(data))
-            else:
-                lambdas = [None] * len(data)
-            corrs = np.zeros(len(data))
-            print(f'Ising coupling: length of data = {len(data)}\n')
-            print(f'sc: {len(sc)}')
-            for idx, i in enumerate(data):
-                print(f'{idx} - Subject: {ID[idx]}, shape: {i.shape}', flush=True)
-                # J, b, c = self.beta_optimization_wrapper(i, sfc[idx], sc[idx])
-                # reps[idx] = J
-                # betas[idx] = b
-                # corrs[idx] = c
-                J, c, opt_params = self.optimize(i, sfc[idx], sc[idx])
-                reps[idx] = J
-                betas[idx] = opt_params['beta']
-                corrs[idx] = c
-                if opt_params.get('lambda', None):
-                    lambdas[idx] = opt_params['lambda']
-                    print(f"Best corr = {c}, beta = {betas[idx]}, lambda = {lambdas[idx]}")
-                if SAVE_BY_SUBJECTS:
-                    self.save_subject(idx, ID[idx], J, sfc[idx], sc[idx], \
-                        diag[idx], c, betas[idx], lambdas[idx])
+        reps = np.zeros((len(data), self.n_rois, self.n_rois))
+        betas = np.zeros(len(data))
+        # if (type(sc) != type(None)) and (type(sc[0]) != type(None)):
+        if not is_none_array(sc):
+            lambdas = np.zeros(len(data))
+        else:
+            lambdas = [None] * len(data)
+        corrs = np.zeros(len(data))
+        print(f'Ising coupling: length of data = {len(data)}\n')
+        print(f'sc: {len(sc)}')
+        for idx, i in enumerate(data):
+            print(f'{idx} - Subject: {ID[idx]}, shape: {i.shape}', flush=True)
+            # J, b, c = self.beta_optimization_wrapper(i, sfc[idx], sc[idx])
+            # reps[idx] = J
+            # betas[idx] = b
+            # corrs[idx] = c
+            J, c, opt_params = self.optimize(i, sfc[idx], sc[idx])
+            reps[idx] = J
+            betas[idx] = opt_params['beta']
+            corrs[idx] = c
+            if opt_params.get('lambda', None):
+                lambdas[idx] = opt_params['lambda']
+                print(f"Best corr = {c}, beta = {betas[idx]}, lambda = {lambdas[idx]}")
+            if SAVE_BY_SUBJECTS:
+                self.save_subject(idx, ID[idx], J, sfc[idx], sc[idx], \
+                    diag[idx], c, betas[idx], lambdas[idx])
         return reps, betas, corrs, ID, diag, age, sex, lambdas
 
     def compute_corrs(self, J, sfc, sc=None):
