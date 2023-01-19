@@ -20,11 +20,19 @@ from ising_simulation import IsingSimulation
 BASE_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset-aparca2009s"
 # BASE_DIR = "/home/anirudh.palutla/Brain/Datasets/mica-mics-dataset-aparca2009s"
 SAVE_DIR = "../../data/mica-mics"
+SUBJECTS_SAVE_DIR = os.path.join(SAVE_DIR, "subjects")
+SAVE_BY_SUBJECTS = True
+
 FUNC_DIR = os.path.join(BASE_DIR, "timeseries")
 META_FP = os.path.join(BASE_DIR, "metadata.csv")
 TIMESERIES_DIR = os.path.join(BASE_DIR, "timeseries")
-# STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
-STRUCT_CONN_DIR = None
+STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
+# STRUCT_CONN_DIR = None
+
+if not os.path.exists(SAVE_DIR):
+    os.makedirs(SAVE_DIR)
+if not os.path.exists(SUBJECTS_SAVE_DIR):
+    os.makedirs(SUBJECTS_SAVE_DIR)
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -373,7 +381,6 @@ class Abide():
 
     def ising_coupling(
                     self, 
-                    method = "GD", 
                     iterations=500, 
                     alpha=2, 
                     beta_range=np.linspace(0.01, 0.105, 10), 
@@ -430,8 +437,41 @@ class Abide():
                 if opt_params.get('lambda', None):
                     lambdas[idx] = opt_params['lambda']
                     print(f"Best corr = {c}, beta = {betas[idx]}, lambda = {lambdas[idx]}")
+                if SAVE_BY_SUBJECTS:
+                    self.save_subject(idx, ID[idx], J, sfc[idx], sc[idx], \
+                        diag[idx], c, betas[idx], lambdas[idx])
         return reps, betas, corrs, ID, diag, age, sex, lambdas
+
+    def compute_corrs(self, J, sfc, sc=None):
+        sfc_ut = sfc
+        J_ut = J[np.triu_indices(self.n_rois)]
+        sc_ut = sc[np.triu_indices(self.n_rois)]
+        J_sfc_corr = np.corrcoef(J_ut, sfc_ut)[0][1]
+
+        sfc_sc_corr, J_sc_corr = None, None
+        if type(sc) != type(None):
+            sfc_sc_corr = np.corrcoef(sc_ut, sfc_ut)[0][1]
+            J_sc_corr = np.corrcoef(sc_ut, J_ut)[0][1]
+
+        return J_sfc_corr, J_sc_corr, sfc_sc_corr
+
+    def save_subject(self, idx, id, J, sfc, sc, diag, c, beta, lambda_):
+        J_sfc_corr, J_sc_corr, sfc_sc_corr = self.compute_corrs(J, sfc, sc)
+        results = {
+            'idx' : idx, 'id': id,
+            'J' : J, 'sfc': sfc, 'sc': sc,
+            'diag' : diag, 'corr': c,
+            'beta' : beta, 'lambda': lambda_,
+            'J_sfc_corr' : J_sfc_corr,
+            'J_sc_corr' : J_sc_corr,
+            'sfc_sc_corr' : sfc_sc_corr
+        }
+        fp = os.path.join(SUBJECTS_SAVE_DIR, f"{id}_results.pkl")
+        with open(fp, 'wb') as f:
+            pkl.dump(results, f)
+        return
         
+    pass
 
 if __name__ == '__main__':
     atlas = ''
