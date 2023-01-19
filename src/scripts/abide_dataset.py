@@ -18,11 +18,12 @@ from joblib import Parallel, delayed
 from ising_simulation import IsingSimulation
 
 BASE_DIR = "/home/anirudh.palutla/Brain/Datasets/mica-mics-dataset-aparca2009s"
+SAVE_DIR = "../../data/mica-mics"
 FUNC_DIR = os.path.join(BASE_DIR, "timeseries")
 META_FP = os.path.join(BASE_DIR, "metadata.csv")
 TIMESERIES_DIR = os.path.join(BASE_DIR, "timeseries")
-# STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
-STRUCT_CONN_DIR = None
+STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
+# STRUCT_CONN_DIR = None
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -48,7 +49,7 @@ class Abide():
                     pre_parcellated = True,
                     scale='AAL',
                     atlas='AAL',
-                    lambda_ = 1e-10
+                    lambda_ = 1e-6
                 ):
 
         self.pre_parcellated = pre_parcellated
@@ -290,6 +291,7 @@ class Abide():
         excluded_subjects.to_csv(join('../../data/excluded', atlas.replace('/', '-') +'.csv'))    
         self.n_timesteps = timeseries.shape[1]
         self.n_rois = timeseries.shape[2]
+        print(f"timeseries shape: {timeseries.shape}, n_timesteps: {self.n_timesteps}, n_rois: {self.n_rois}")
 
         self.timeseries_result = (timeseries, IDs_subject, diagnosis, age, sex)
         return timeseries, IDs_subject, diagnosis, age, sex
@@ -351,12 +353,12 @@ class Abide():
     def ising_coupling(
                     self, 
                     method = "GD", 
-                    iterations=1000, 
+                    iterations=2000, 
                     alpha=2, 
                     beta_range=np.linspace(0.01, 0.105, 10), 
-                    sim_timesteps = 500,
+                    sim_timesteps = 700,
                     beta = False, 
-                    eq_timesteps=300
+                    eq_timesteps=500
                     ):
         # setting parameters for GD
         self.eq_steps = eq_timesteps
@@ -388,7 +390,7 @@ class Abide():
             print(f'Ising coupling: length of data = {len(data)}\n')
             print(f'sc: {len(sc)}')
             for idx, i in enumerate(data):
-                print(f'Subject: {ID[idx]}, shape: {i.shape}', flush=True)
+                print(f'{idx} - Subject: {ID[idx]}, shape: {i.shape}', flush=True)
                 J, b, c = self.beta_optimization_wrapper(i, sfc[idx], sc[idx])
                 reps[idx] = J
                 betas[idx] = b
@@ -398,10 +400,6 @@ class Abide():
 
 if __name__ == '__main__':
     atlas = ''
-    all_ising = None
-    all_sfc = None 
-    all_diag = None
-    all_betas = None
     sites = [ 'main' ]
     n_rois = 164
     for site in sites:
@@ -413,12 +411,15 @@ if __name__ == '__main__':
         J_corr = []
         sfc, sub, diag, age, sex = dataset.sFC()
         ising, betas, corr, sub1, diag1, age1, sex1 = dataset.ising_coupling()
+        sc = dataset.SC()
 
-        np.save(f'../../data/mica-mics/diag_{site}.npy', diag)
-        np.save(f'../../data/mica-mics/sfc_{site}.npy', sfc)
-        np.save(f'../../data/mica-mics/ising_{site}.npy', ising)
-        np.save(f'../../data/mica-mics/betas_{site}.npy', betas)
-        np.save(f'../../data/mica-mics/corr_{site}.npy', corr)
+        np.save(os.path.join(SAVE_DIR, f'diag_{site}.npy'), diag)
+        np.save(os.path.join(SAVE_DIR, f'sub_{site}.npy'), sub)
+        np.save(os.path.join(SAVE_DIR, f'sc_{site}.npy'), sc)
+        np.save(os.path.join(SAVE_DIR, f'sfc_{site}.npy'), sfc)
+        np.save(os.path.join(SAVE_DIR, f'ising_{site}.npy'), ising)
+        np.save(os.path.join(SAVE_DIR, f'betas_{site}.npy'), betas)
+        np.save(os.path.join(SAVE_DIR, f'corr_{site}.npy'), corr)
 
         print('ising shape:', ising[0][np.triu_indices(n_rois)].flatten().shape)
         print('sfc shape:', sfc[0].flatten().shape)
@@ -429,21 +430,14 @@ if __name__ == '__main__':
             print(k)
         J_corr = np.array(J_corr)
         assert np.array_equal(sub, sub1)
-        np.save(f'../../data/mica-mics/J_corr_{site}.npy', J_corr)
+        np.save(os.path.join(SAVE_DIR, f'J_fc_corr_{site}.npy'), J_corr)
 
+        if (type(sc) != type(None)) and (type(sc[0]) != type(None)):
+            J_sc_corr = []
+            for i in range(ising.shape[0]):
+                k = np.corrcoef(sc[i].flatten(), ising[i][np.triu_indices(n_rois)].flatten())[0][1]
+                J_sc_corr.append(k)
+                J_sc_corr = np.array(J_sc_corr)
+            np.save(os.path.join(SAVE_DIR, f'J_sc_corr_{site}.npy'), J_sc_corr)
 
-        if all_sfc is not None:
-            all_ising = np.vstack((all_ising, ising))
-            all_sfc = np.vstack((all_sfc, sfc))
-            all_diag = np.hstack((all_diag, diag))
-            all_betas = np.hstack((all_betas, betas))
-        else:
-            all_ising = ising
-            all_sfc = sfc
-            all_diag = diag
-            all_betas = betas
-    
-    #np.save(f'../../data/CC200_reps/diag.npy', all_diag)
-    #np.save(f'../../data/CC200_reps/sfc.npy', all_sfc)
-    #np.save(f'../../data/CC200_reps/ising.npy', all_ising)
-    #np.save(f'../../data/CC200_reps/betas.npy', all_betas)
+	pass
