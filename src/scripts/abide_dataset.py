@@ -532,7 +532,7 @@ if __name__ == '__main__':
         if not is_none_array(sc):
             J_sc_corr = []
             for i in range(ising.shape[0]):
-                k = np.corrcoef(sc[i].flatten(), ising[i][np.triu_indices(n_rois)].flatten())[0][1]
+                k = np.corrcoef(sc[i][np.triu_indices(n_rois)].flatten(), ising[i][np.triu_indices(n_rois)].flatten())[0][1]
                 J_sc_corr.append(k)
                 J_sc_corr = np.array(J_sc_corr)
             np.save(os.path.join(SAVE_DIR, f'J_sc_corr_{site}.npy'), J_sc_corr)
