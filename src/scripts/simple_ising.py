@@ -48,7 +48,7 @@ class IsingSimulation:
                 S = config[i,j]
                 nb = config[(i+1)%N, j] + config[i,(j+1)%N] + config[(i-1)%N, j] + config[i,(j-1)%N]
                 energy += -nb*S
-        return energy/2.  # to compensate for over-counting
+        return energy/2.  # to compensate for double-counting
     
     def calcMag(self):
         mag = np.sum(self.state)
