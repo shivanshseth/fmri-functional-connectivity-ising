@@ -22,6 +22,8 @@ BASE_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset-aparca2009s"
 SAVE_DIR = "../../data/mica-mics"
 SUBJECTS_SAVE_DIR = os.path.join(SAVE_DIR, "subjects")
 SAVE_BY_SUBJECTS = True
+EXTENDED_SAVE_FP = os.path.join(SAVE_DIR, "subjects.pkl")
+SAVE_EXTENDED = True
 
 FUNC_DIR = os.path.join(BASE_DIR, "timeseries")
 META_FP = os.path.join(BASE_DIR, "metadata.csv")
@@ -185,7 +187,7 @@ class Abide():
         w_max = w_history[f_history.index(min(f_history))]
         return w_max.flatten()
 
-    def beta_optimization(self, bold, bold_bin, beta, sfc, sc=None, lambda_=None, n_folds = 5):
+    def beta_optimization(self, bold, bold_bin, beta, sfc, sc=None, lambda_=None, id=None, n_folds = 5):
         print(f"Optimizing for beta = {beta}", flush=True)
         J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
         J = (J + J.T)/2 # making it symmetric
@@ -204,16 +206,19 @@ class Abide():
         for i in range(n_folds):
             _, sim_fc = sim.getTimeseries(self.sim_timesteps)
             corr += np.corrcoef(fc, sim_fc[np.triu_indices(self.n_rois)].flatten())[0][1]
+        
+        if SAVE_EXTENDED:
+            self.extended_save(id, J_max, beta, lambda_, corr/n_folds, n_folds)
         return J_max, corr/n_folds
     
-    def beta_optimization_wrapper(self, bold, sfc, sc=None, lambda_=None):
+    def beta_optimization_wrapper(self, bold, sfc, sc=None, lambda_=None, id=None):
         if type(lambda_) != type(None):
             print(f"Optimizing for lambda = {lambda_}")
         bold_bin = np.copy(bold)
         bold_bin[np.where(bold_bin >= 0)] = 1
         bold_bin[np.where(bold_bin < 0)] = -1
         results = Parallel(n_jobs=20)(
-            delayed(self.beta_optimization)(bold, bold_bin, i, sfc, sc, lambda_) 
+            delayed(self.beta_optimization)(bold, bold_bin, i, sfc, sc, lambda_, id=id) 
             for i in self.beta_range 
             )
         Js, corrs = np.array(results, dtype=object).T
@@ -224,9 +229,9 @@ class Abide():
         print('J corr', J_corr)
         return J_max, beta_max, corrs[max_idx]
 
-    def lambda_optimization_wrapper(self, bold, sfc, sc):
+    def lambda_optimization_wrapper(self, bold, sfc, sc, id=None):
         results = Parallel(n_jobs=20)(
-            delayed(self.beta_optimization_wrapper)(bold, sfc, sc, i) 
+            delayed(self.beta_optimization_wrapper)(bold, sfc, sc, i, id) 
             for i in self.lambda_range 
             )
         Js, betas, corrs = np.array(results, dtype=object).T
@@ -235,16 +240,16 @@ class Abide():
         J_max, beta_max, corr_max = Js[max_idx], betas[max_idx], corrs[max_idx]
         return J_max, beta_max, corr_max, lambda_max
     
-    def optimize(self, bold, sfc, sc=None):
+    def optimize(self, bold, sfc, sc=None, id=None):
         opt_params = {}
         if type(sc) == type(None):
             print(f"Optimize called with no structural data")
-            J_max, beta_max, corr_max = self.beta_optimization_wrapper(bold, sfc)
+            J_max, beta_max, corr_max = self.beta_optimization_wrapper(bold, sfc, id=id)
             opt_params['beta'] = beta_max
         else:
             print(f"Optimize called with structural data")
             J_max, beta_max, corr_max, lambda_max = \
-                self.lambda_optimization_wrapper(bold, sfc, sc)
+                self.lambda_optimization_wrapper(bold, sfc, sc, id=id)
             opt_params['beta'] = beta_max
             opt_params['lambda'] = lambda_max
         return J_max, corr_max, opt_params
@@ -384,8 +389,8 @@ class Abide():
                     iterations=500, 
                     alpha=2, 
                     beta_range=np.linspace(0.01, 0.105, 10), 
-                    lambda_range=np.linspace(1e-6, 1e-5, 10), 
-                    sim_timesteps = 300,
+                    lambda_range=np.linspace(1e-7, 1e-5, 5), 
+                    sim_timesteps = 500,
                     eq_timesteps=100
                     ):
         # setting parameters for GD
@@ -425,16 +430,16 @@ class Abide():
             # reps[idx] = J
             # betas[idx] = b
             # corrs[idx] = c
-            J, c, opt_params = self.optimize(i, sfc[idx], sc[idx])
+            J, c, opt_params = self.optimize(i, sfc[idx], sc[idx], id=ID[idx])
             reps[idx] = J
             betas[idx] = opt_params['beta']
             corrs[idx] = c
             if opt_params.get('lambda', None):
                 lambdas[idx] = opt_params['lambda']
-                print(f"Best corr = {c}, beta = {betas[idx]}, lambda = {lambdas[idx]}")
+                print(f"{idx}: subject = {ID[idx]}, best corr = {c}, beta = {betas[idx]}, lambda = {lambdas[idx]}")
             if SAVE_BY_SUBJECTS:
                 self.save_subject(idx, ID[idx], J, sfc[idx], sc[idx], \
-                    diag[idx], c, betas[idx], lambdas[idx])
+                    diag[idx], age[idx], sex[idx], c, betas[idx], lambdas[idx])
         return reps, betas, corrs, ID, diag, age, sex, lambdas
 
     def compute_corrs(self, J, sfc, sc=None):
@@ -450,13 +455,33 @@ class Abide():
 
         return J_sfc_corr, J_sc_corr, sfc_sc_corr
 
-    def save_subject(self, idx, id, J, sfc, sc, diag, c, beta, lambda_):
+    def extended_save(self, id, J, beta, lambda_, corr, n_folds):
+        if not os.path.exists(EXTENDED_SAVE_FP):
+            data = []
+            with open(EXTENDED_SAVE_FP, 'wb') as f:
+                pkl.dump(data, f)
+        new_data = {
+            'id' : id,
+            'J' : J,
+            'beta' : beta,
+            'lambda' : lambda_,
+            'corr' : corr, 
+            'n_folds' : n_folds,
+        }
+        with open(EXTENDED_SAVE_FP, 'rb') as f:
+            data = pkl.load(f)
+        data.append(new_data)
+        with open(EXTENDED_SAVE_FP, 'wb') as f:
+            pkl.dump(data, f)
+        return
+
+    def save_subject(self, idx, id, J, sfc, sc, diag, age, sex, c, beta, lambda_):
         J_sfc_corr, J_sc_corr, sfc_sc_corr = self.compute_corrs(J, sfc, sc)
         results = {
             'idx' : idx, 'id': id,
             'J' : J, 'sfc': sfc, 'sc': sc,
-            'diag' : diag, 'corr': c,
-            'beta' : beta, 'lambda': lambda_,
+            'diag' : diag, 'age' : age, 'sex' : sex,
+            'corr': c, 'beta' : beta, 'lambda': lambda_,
             'J_sfc_corr' : J_sfc_corr,
             'J_sc_corr' : J_sc_corr,
             'sfc_sc_corr' : sfc_sc_corr
