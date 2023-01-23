@@ -32,14 +32,11 @@ TIMESERIES_DIR = os.path.join(BASE_DIR, "timeseries")
 # STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
 STRUCT_CONN_DIR = None
 
-N_ITERATIONS = 10
-N_SIM_TIMESTEPS = 50
-N_EQ_TIMESTEPS = 10
-# N_ITERATIONS = 500
-# N_SIM_TIMESTEPS = 500
-# N_EQ_TIMESTEPS = 100
-BETA_RANGE = np.linspace(0.01, 0.105, 2)
-LAMBDA_RANGE = np.linspace(1e-7, 1e-5, 2)
+N_ITERATIONS = 500
+N_SIM_TIMESTEPS = 500
+N_EQ_TIMESTEPS = 100
+BETA_RANGE = np.linspace(0.01, 0.105, 5)
+LAMBDA_RANGE = np.linspace(1e-7, 1e-5, 10)
 
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
