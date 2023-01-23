@@ -69,16 +69,16 @@ class IsingSimulation:
     def run(self, steps, n_timesteps, calc_corr=False, fc=None, eqSteps=1000):
         E = M = corr = []
         for i in range(eqSteps):
-            sim.step()
+            self.step()
             
         for i in range(steps):
             if calc_corr and i%calc_corr == 0:
-                time_series, sim_fc = sim.getTimeseries(n_timesteps)
+                time_series, sim_fc = self.getTimeseries(n_timesteps)
                 c = np.corrcoef(np.triu(fc).flatten(), np.triu(sim_fc).flatten())[0, 1]
                 corr.append(c)
-            sim.step()           # Monte Carlo moves
-            E.append(sim.calcEnergy())
-            M.append(sim.calcMag())
+            self.step()           # Monte Carlo moves
+            E.append(self.calcEnergy())
+            M.append(self.calcMag())
         if calc_corr:
             return E, M, corr
         return E, M

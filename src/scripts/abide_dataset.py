@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import json
 import numpy as np
 import pickle as pkl
 from nilearn import datasets
@@ -22,19 +23,30 @@ BASE_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset-aparca2009s"
 SAVE_DIR = "../../data/mica-mics"
 SUBJECTS_SAVE_DIR = os.path.join(SAVE_DIR, "subjects")
 SAVE_BY_SUBJECTS = True
-EXTENDED_SAVE_FP = os.path.join(SAVE_DIR, "subjects.pkl")
+EXTENDED_SAVE_DIR = os.path.join(SAVE_DIR, "subjects-extended")
 SAVE_EXTENDED = True
 
 FUNC_DIR = os.path.join(BASE_DIR, "timeseries")
 META_FP = os.path.join(BASE_DIR, "metadata.csv")
 TIMESERIES_DIR = os.path.join(BASE_DIR, "timeseries")
-STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
-# STRUCT_CONN_DIR = None
+# STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
+STRUCT_CONN_DIR = None
+
+N_ITERATIONS = 10
+N_SIM_TIMESTEPS = 50
+N_EQ_TIMESTEPS = 10
+# N_ITERATIONS = 500
+# N_SIM_TIMESTEPS = 500
+# N_EQ_TIMESTEPS = 100
+BETA_RANGE = np.linspace(0.01, 0.105, 2)
+LAMBDA_RANGE = np.linspace(1e-7, 1e-5, 2)
 
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 if not os.path.exists(SUBJECTS_SAVE_DIR):
     os.makedirs(SUBJECTS_SAVE_DIR)
+if not os.path.exists(EXTENDED_SAVE_DIR):
+    os.makedirs(EXTENDED_SAVE_DIR)
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -386,12 +398,12 @@ class Abide():
 
     def ising_coupling(
                     self, 
-                    iterations=500, 
+                    iterations=N_ITERATIONS, 
                     alpha=2, 
-                    beta_range=np.linspace(0.01, 0.105, 10), 
-                    lambda_range=np.linspace(1e-7, 1e-5, 5), 
-                    sim_timesteps = 500,
-                    eq_timesteps=100
+                    beta_range=BETA_RANGE,
+                    lambda_range=LAMBDA_RANGE,
+                    sim_timesteps=N_SIM_TIMESTEPS,
+                    eq_timesteps=N_EQ_TIMESTEPS
                     ):
         # setting parameters for GD
         self.eq_steps = eq_timesteps
@@ -445,34 +457,33 @@ class Abide():
     def compute_corrs(self, J, sfc, sc=None):
         sfc_ut = sfc
         J_ut = J[np.triu_indices(self.n_rois)]
-        sc_ut = sc[np.triu_indices(self.n_rois)]
         J_sfc_corr = np.corrcoef(J_ut, sfc_ut)[0][1]
 
         sfc_sc_corr, J_sc_corr = None, None
         if type(sc) != type(None):
+            sc_ut = sc[np.triu_indices(self.n_rois)]
             sfc_sc_corr = np.corrcoef(sc_ut, sfc_ut)[0][1]
             J_sc_corr = np.corrcoef(sc_ut, J_ut)[0][1]
 
         return J_sfc_corr, J_sc_corr, sfc_sc_corr
 
     def extended_save(self, id, J, beta, lambda_, corr, n_folds):
-        if not os.path.exists(EXTENDED_SAVE_FP):
-            data = []
-            with open(EXTENDED_SAVE_FP, 'wb') as f:
-                pkl.dump(data, f)
+        add_str = id + "_beta-" + "{:e}".format(beta)
+        if lambda_:
+            add_str += "_lambda-" + "{:e}".format(lambda_)
+        save_fp = os.path.join(EXTENDED_SAVE_DIR, add_str + ".pkl")
+            # .join(random.choices(string.ascii_lowercase + string.digits, k=10)) + ".pkl")
         new_data = {
             'id' : id,
             'J' : J,
             'beta' : beta,
             'lambda' : lambda_,
-            'corr' : corr, 
+            'corr' : corr,
             'n_folds' : n_folds,
         }
-        with open(EXTENDED_SAVE_FP, 'rb') as f:
-            data = pkl.load(f)
-        data.append(new_data)
-        with open(EXTENDED_SAVE_FP, 'wb') as f:
-            pkl.dump(data, f)
+        with open(save_fp, 'wb') as f:
+            print(f"Saved {id} with beta = {beta}, lambda = {lambda_} to {save_fp}")
+            pkl.dump(new_data, f)
         return
 
     def save_subject(self, idx, id, J, sfc, sc, diag, age, sex, c, beta, lambda_):
@@ -493,11 +504,35 @@ class Abide():
         
     pass
 
+def save_run_info():
+    run_info = {
+        'lambda_range' : list(LAMBDA_RANGE),
+        'beta_range' : list(BETA_RANGE),
+        'n_rois' : N_ROIS,
+        'n_iterations' : N_ITERATIONS,
+        'n_eq_timesteps' : N_EQ_TIMESTEPS,
+        'n_sim_timesteps' : N_SIM_TIMESTEPS,
+        'func_dir' : FUNC_DIR,
+        'metadata_fp' : META_FP,
+        'save_dir' : SAVE_DIR,
+        'timeseries_dir' : TIMESERIES_DIR,
+        'sc_dir' : STRUCT_CONN_DIR,
+        'save_extended' : SAVE_EXTENDED,
+        'extended_save_dir' : EXTENDED_SAVE_DIR,
+    }
+    print(type(run_info))
+    with open(os.path.join(SAVE_DIR, f'run_info.json'), "w") as f:
+        json.dump(run_info, f, indent=4)
+
+    return
+
+
 if __name__ == '__main__':
     atlas = ''
     sites = [ 'main' ]
-    n_rois = 164
+    N_ROIS = 164
     for site in sites:
+        save_run_info()
         dataset = Abide(sites=sites, atlas=atlas)
         betas = []
         diag = []
@@ -517,11 +552,13 @@ if __name__ == '__main__':
         np.save(os.path.join(SAVE_DIR, f'corr_{site}.npy'), corr)
         np.save(os.path.join(SAVE_DIR, f'lambdas_{site}.npy'), lambdas)
 
-        print('ising shape:', ising[0][np.triu_indices(n_rois)].flatten().shape)
+
+
+        print('ising shape:', ising[0][np.triu_indices(N_ROIS)].flatten().shape)
         print('sfc shape:', sfc[0].flatten().shape)
         print('fc and j corr:')
         for i in range(ising.shape[0]):
-            k = np.corrcoef(sfc[i].flatten(), ising[i][np.triu_indices(n_rois)].flatten())[0][1]
+            k = np.corrcoef(sfc[i].flatten(), ising[i][np.triu_indices(N_ROIS)].flatten())[0][1]
             J_corr.append(k)
             print(k)
         J_corr = np.array(J_corr)
@@ -532,7 +569,7 @@ if __name__ == '__main__':
         if not is_none_array(sc):
             J_sc_corr = []
             for i in range(ising.shape[0]):
-                k = np.corrcoef(sc[i][np.triu_indices(n_rois)].flatten(), ising[i][np.triu_indices(n_rois)].flatten())[0][1]
+                k = np.corrcoef(sc[i][np.triu_indices(N_ROIS)].flatten(), ising[i][np.triu_indices(N_ROIS)].flatten())[0][1]
                 J_sc_corr.append(k)
                 J_sc_corr = np.array(J_sc_corr)
             np.save(os.path.join(SAVE_DIR, f'J_sc_corr_{site}.npy'), J_sc_corr)
