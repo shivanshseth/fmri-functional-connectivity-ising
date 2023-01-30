@@ -6,6 +6,7 @@ class IsingSimulation:
     def __init__(self, n_rois, beta, coupling_mat = False, J=None, initial_state = False, state=None):
         self.N = n_rois
         self.beta = beta
+        self.costs = []
         if not coupling_mat:
             J = np.random.uniform(0, 1, size=(n_rois, n_rois))
             J = (J + J.T)/2 # making it symmetric
@@ -29,18 +30,20 @@ class IsingSimulation:
             state = self.state[:]
         energy_flips = 0
         random_flips = 0
-        for i in range(self.N):
+        # for i in range(self.N):
             # calculating delH
-            H_i = 0
-            H_i = self.J[i, :] @ state.T 
-            H_i -= self.J[i, i] * state[i] # removing self coupling term
-            cost =  2 * state[i] * H_i
-            if cost < 0:
-                state[i] *= -1
-                energy_flips +=1
-            elif rand() < np.exp(-cost*self.beta):
-                state[i] *= -1
-                random_flips += 1
+        i = np.random.randint(self.N)
+        H_i = 0
+        H_i = self.J[i, :] @ state.T 
+        H_i -= self.J[i, i] * state[i] # removing self coupling term
+        cost =  2 * state[i] * H_i
+        if cost < 0:
+            state[i] *= -1
+            energy_flips +=1
+        elif rand() < np.exp(-cost*self.beta):
+            self.costs.append(np.exp(-cost*self.beta))
+            state[i] *= -1
+            random_flips += 1
         if update_state:
             self.state = state
         self.flips['r'].append(random_flips)
