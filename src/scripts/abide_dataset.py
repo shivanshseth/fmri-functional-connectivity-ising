@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import json
 import numpy as np
 import pickle as pkl
 from nilearn import datasets
@@ -22,17 +23,27 @@ BASE_DIR = "/home/anirudh/Research/Brain/Datasets/mica-mics-dataset-aparca2009s"
 SAVE_DIR = "../../data/mica-mics"
 SUBJECTS_SAVE_DIR = os.path.join(SAVE_DIR, "subjects")
 SAVE_BY_SUBJECTS = True
+EXTENDED_SAVE_DIR = os.path.join(SAVE_DIR, "subjects-extended")
+SAVE_EXTENDED = True
 
 FUNC_DIR = os.path.join(BASE_DIR, "timeseries")
 META_FP = os.path.join(BASE_DIR, "metadata.csv")
 TIMESERIES_DIR = os.path.join(BASE_DIR, "timeseries")
-STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
-# STRUCT_CONN_DIR = None
+# STRUCT_CONN_DIR = os.path.join(BASE_DIR, "sc")
+STRUCT_CONN_DIR = None
+
+N_ITERATIONS = 500
+N_SIM_TIMESTEPS = 500
+N_EQ_TIMESTEPS = 100
+BETA_RANGE = np.linspace(0.01, 0.105, 5)
+LAMBDA_RANGE = np.linspace(1e-7, 1e-5, 10)
 
 if not os.path.exists(SAVE_DIR):
     os.makedirs(SAVE_DIR)
 if not os.path.exists(SUBJECTS_SAVE_DIR):
     os.makedirs(SUBJECTS_SAVE_DIR)
+if not os.path.exists(EXTENDED_SAVE_DIR):
+    os.makedirs(EXTENDED_SAVE_DIR)
 
 def pad_along_axis(array: np.ndarray, target_length: int, axis: int = 0):
     pad_size = target_length - array.shape[axis]
@@ -185,7 +196,7 @@ class Abide():
         w_max = w_history[f_history.index(min(f_history))]
         return w_max.flatten()
 
-    def beta_optimization(self, bold, bold_bin, beta, sfc, sc=None, lambda_=None, n_folds = 5):
+    def beta_optimization(self, bold, bold_bin, beta, sfc, sc=None, lambda_=None, id=None, n_folds = 5):
         print(f"Optimizing for beta = {beta}", flush=True)
         J = np.random.uniform(0, 1, size=(self.n_rois, self.n_rois))
         J = (J + J.T)/2 # making it symmetric
@@ -204,16 +215,19 @@ class Abide():
         for i in range(n_folds):
             _, sim_fc = sim.getTimeseries(self.sim_timesteps)
             corr += np.corrcoef(fc, sim_fc[np.triu_indices(self.n_rois)].flatten())[0][1]
+        
+        if SAVE_EXTENDED:
+            self.extended_save(id, J_max, beta, lambda_, corr/n_folds, n_folds)
         return J_max, corr/n_folds
     
-    def beta_optimization_wrapper(self, bold, sfc, sc=None, lambda_=None):
+    def beta_optimization_wrapper(self, bold, sfc, sc=None, lambda_=None, id=None):
         if type(lambda_) != type(None):
             print(f"Optimizing for lambda = {lambda_}")
         bold_bin = np.copy(bold)
         bold_bin[np.where(bold_bin >= 0)] = 1
         bold_bin[np.where(bold_bin < 0)] = -1
         results = Parallel(n_jobs=20)(
-            delayed(self.beta_optimization)(bold, bold_bin, i, sfc, sc, lambda_) 
+            delayed(self.beta_optimization)(bold, bold_bin, i, sfc, sc, lambda_, id=id) 
             for i in self.beta_range 
             )
         Js, corrs = np.array(results, dtype=object).T
@@ -224,9 +238,9 @@ class Abide():
         print('J corr', J_corr)
         return J_max, beta_max, corrs[max_idx]
 
-    def lambda_optimization_wrapper(self, bold, sfc, sc):
+    def lambda_optimization_wrapper(self, bold, sfc, sc, id=None):
         results = Parallel(n_jobs=20)(
-            delayed(self.beta_optimization_wrapper)(bold, sfc, sc, i) 
+            delayed(self.beta_optimization_wrapper)(bold, sfc, sc, i, id) 
             for i in self.lambda_range 
             )
         Js, betas, corrs = np.array(results, dtype=object).T
@@ -235,16 +249,16 @@ class Abide():
         J_max, beta_max, corr_max = Js[max_idx], betas[max_idx], corrs[max_idx]
         return J_max, beta_max, corr_max, lambda_max
     
-    def optimize(self, bold, sfc, sc=None):
+    def optimize(self, bold, sfc, sc=None, id=None):
         opt_params = {}
         if type(sc) == type(None):
             print(f"Optimize called with no structural data")
-            J_max, beta_max, corr_max = self.beta_optimization_wrapper(bold, sfc)
+            J_max, beta_max, corr_max = self.beta_optimization_wrapper(bold, sfc, id=id)
             opt_params['beta'] = beta_max
         else:
             print(f"Optimize called with structural data")
             J_max, beta_max, corr_max, lambda_max = \
-                self.lambda_optimization_wrapper(bold, sfc, sc)
+                self.lambda_optimization_wrapper(bold, sfc, sc, id=id)
             opt_params['beta'] = beta_max
             opt_params['lambda'] = lambda_max
         return J_max, corr_max, opt_params
@@ -381,12 +395,12 @@ class Abide():
 
     def ising_coupling(
                     self, 
-                    iterations=500, 
+                    iterations=N_ITERATIONS, 
                     alpha=2, 
-                    beta_range=np.linspace(0.01, 0.105, 10), 
-                    lambda_range=np.linspace(1e-6, 1e-5, 10), 
-                    sim_timesteps = 300,
-                    eq_timesteps=100
+                    beta_range=BETA_RANGE,
+                    lambda_range=LAMBDA_RANGE,
+                    sim_timesteps=N_SIM_TIMESTEPS,
+                    eq_timesteps=N_EQ_TIMESTEPS
                     ):
         # setting parameters for GD
         self.eq_steps = eq_timesteps
@@ -425,38 +439,57 @@ class Abide():
             # reps[idx] = J
             # betas[idx] = b
             # corrs[idx] = c
-            J, c, opt_params = self.optimize(i, sfc[idx], sc[idx])
+            J, c, opt_params = self.optimize(i, sfc[idx], sc[idx], id=ID[idx])
             reps[idx] = J
             betas[idx] = opt_params['beta']
             corrs[idx] = c
             if opt_params.get('lambda', None):
                 lambdas[idx] = opt_params['lambda']
-                print(f"Best corr = {c}, beta = {betas[idx]}, lambda = {lambdas[idx]}")
+                print(f"{idx}: subject = {ID[idx]}, best corr = {c}, beta = {betas[idx]}, lambda = {lambdas[idx]}")
             if SAVE_BY_SUBJECTS:
                 self.save_subject(idx, ID[idx], J, sfc[idx], sc[idx], \
-                    diag[idx], c, betas[idx], lambdas[idx])
+                    diag[idx], age[idx], sex[idx], c, betas[idx], lambdas[idx])
         return reps, betas, corrs, ID, diag, age, sex, lambdas
 
     def compute_corrs(self, J, sfc, sc=None):
         sfc_ut = sfc
         J_ut = J[np.triu_indices(self.n_rois)]
-        sc_ut = sc[np.triu_indices(self.n_rois)]
         J_sfc_corr = np.corrcoef(J_ut, sfc_ut)[0][1]
 
         sfc_sc_corr, J_sc_corr = None, None
         if type(sc) != type(None):
+            sc_ut = sc[np.triu_indices(self.n_rois)]
             sfc_sc_corr = np.corrcoef(sc_ut, sfc_ut)[0][1]
             J_sc_corr = np.corrcoef(sc_ut, J_ut)[0][1]
 
         return J_sfc_corr, J_sc_corr, sfc_sc_corr
 
-    def save_subject(self, idx, id, J, sfc, sc, diag, c, beta, lambda_):
+    def extended_save(self, id, J, beta, lambda_, corr, n_folds):
+        add_str = id + "_beta-" + "{:e}".format(beta)
+        if lambda_:
+            add_str += "_lambda-" + "{:e}".format(lambda_)
+        save_fp = os.path.join(EXTENDED_SAVE_DIR, add_str + ".pkl")
+            # .join(random.choices(string.ascii_lowercase + string.digits, k=10)) + ".pkl")
+        new_data = {
+            'id' : id,
+            'J' : J,
+            'beta' : beta,
+            'lambda' : lambda_,
+            'corr' : corr,
+            'n_folds' : n_folds,
+        }
+        with open(save_fp, 'wb') as f:
+            print(f"Saved {id} with beta = {beta}, lambda = {lambda_} to {save_fp}")
+            pkl.dump(new_data, f)
+        return
+
+    def save_subject(self, idx, id, J, sfc, sc, diag, age, sex, c, beta, lambda_):
         J_sfc_corr, J_sc_corr, sfc_sc_corr = self.compute_corrs(J, sfc, sc)
         results = {
             'idx' : idx, 'id': id,
             'J' : J, 'sfc': sfc, 'sc': sc,
-            'diag' : diag, 'corr': c,
-            'beta' : beta, 'lambda': lambda_,
+            'diag' : diag, 'age' : age, 'sex' : sex,
+            'corr': c, 'beta' : beta, 'lambda': lambda_,
             'J_sfc_corr' : J_sfc_corr,
             'J_sc_corr' : J_sc_corr,
             'sfc_sc_corr' : sfc_sc_corr
@@ -468,11 +501,35 @@ class Abide():
         
     pass
 
+def save_run_info():
+    run_info = {
+        'lambda_range' : list(LAMBDA_RANGE),
+        'beta_range' : list(BETA_RANGE),
+        'n_rois' : N_ROIS,
+        'n_iterations' : N_ITERATIONS,
+        'n_eq_timesteps' : N_EQ_TIMESTEPS,
+        'n_sim_timesteps' : N_SIM_TIMESTEPS,
+        'func_dir' : FUNC_DIR,
+        'metadata_fp' : META_FP,
+        'save_dir' : SAVE_DIR,
+        'timeseries_dir' : TIMESERIES_DIR,
+        'sc_dir' : STRUCT_CONN_DIR,
+        'save_extended' : SAVE_EXTENDED,
+        'extended_save_dir' : EXTENDED_SAVE_DIR,
+    }
+    print(type(run_info))
+    with open(os.path.join(SAVE_DIR, f'run_info.json'), "w") as f:
+        json.dump(run_info, f, indent=4)
+
+    return
+
+
 if __name__ == '__main__':
     atlas = ''
     sites = [ 'main' ]
-    n_rois = 164
+    N_ROIS = 164
     for site in sites:
+        save_run_info()
         dataset = Abide(sites=sites, atlas=atlas)
         betas = []
         diag = []
@@ -492,11 +549,13 @@ if __name__ == '__main__':
         np.save(os.path.join(SAVE_DIR, f'corr_{site}.npy'), corr)
         np.save(os.path.join(SAVE_DIR, f'lambdas_{site}.npy'), lambdas)
 
-        print('ising shape:', ising[0][np.triu_indices(n_rois)].flatten().shape)
+
+
+        print('ising shape:', ising[0][np.triu_indices(N_ROIS)].flatten().shape)
         print('sfc shape:', sfc[0].flatten().shape)
         print('fc and j corr:')
         for i in range(ising.shape[0]):
-            k = np.corrcoef(sfc[i].flatten(), ising[i][np.triu_indices(n_rois)].flatten())[0][1]
+            k = np.corrcoef(sfc[i].flatten(), ising[i][np.triu_indices(N_ROIS)].flatten())[0][1]
             J_corr.append(k)
             print(k)
         J_corr = np.array(J_corr)
@@ -507,7 +566,7 @@ if __name__ == '__main__':
         if not is_none_array(sc):
             J_sc_corr = []
             for i in range(ising.shape[0]):
-                k = np.corrcoef(sc[i].flatten(), ising[i][np.triu_indices(n_rois)].flatten())[0][1]
+                k = np.corrcoef(sc[i][np.triu_indices(N_ROIS)].flatten(), ising[i][np.triu_indices(N_ROIS)].flatten())[0][1]
                 J_sc_corr.append(k)
                 J_sc_corr = np.array(J_sc_corr)
             np.save(os.path.join(SAVE_DIR, f'J_sc_corr_{site}.npy'), J_sc_corr)
